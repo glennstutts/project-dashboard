@@ -132,7 +132,10 @@
 
 <div class="db-header">
   <h1>📋 Project Operations Dashboard</h1>
-  <span class="db-date" id="db-date"></span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span id="sync-status" style="font-size:10px;font-family:monospace;color:#27ae60">↻ Loading...</span>
+    <span class="db-date" id="db-date"></span>
+  </div>
 </div>
 
 <div class="grid">
@@ -180,9 +183,93 @@
 
 <script>
 // ═══════════════════════════════════════════════════════
-// STORAGE KEYS
+// JSONBIN SYNC — cross-device data persistence
 // ═══════════════════════════════════════════════════════
-const S_DATA='db_hier_v3', S_COMP='db_comp_v3', S_MS='db_ms_v3';
+const JSONBIN_ID = '69b73917b7ec241ddc6fd1cd';
+const JSONBIN_KEY = '$2a$10$75H3nIWqsT0a8bYaP23ske1k5IES9Tykgq/MQ40h6FSFgPhw39HHS';
+const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
+
+let _cache = null;
+let _saveTimer = null;
+let _syncStatus = 'idle';
+
+async function fetchBin() {
+  try {
+    const r = await fetch(JSONBIN_URL + '/latest', {
+      headers: { 'X-Master-Key': JSONBIN_KEY }
+    });
+    const j = await r.json();
+    _cache = j.record || { actions: {}, completed: [], milestones: {} };
+    return _cache;
+  } catch(e) {
+    console.warn('JSONBin fetch failed, using localStorage fallback', e);
+    _cache = getLocalFallback();
+    return _cache;
+  }
+}
+
+async function saveBin(data) {
+  _cache = data;
+  setLocalFallback(data);
+  setSyncStatus('saving');
+  try {
+    await fetch(JSONBIN_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      body: JSON.stringify(data)
+    });
+    setSyncStatus('saved');
+    setTimeout(() => setSyncStatus('idle'), 2000);
+  } catch(e) {
+    console.warn('JSONBin save failed, saved locally only', e);
+    setSyncStatus('offline');
+  }
+}
+
+function setSyncStatus(status) {
+  _syncStatus = status;
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const states = {
+    idle: { text: '● Synced', color: '#27ae60' },
+    saving: { text: '↻ Saving...', color: '#d4ac0d' },
+    saved: { text: '✓ Saved', color: '#27ae60' },
+    offline: { text: '⚠ Offline — saved locally', color: '#e67e22' },
+    loading: { text: '↻ Loading...', color: '#d4ac0d' }
+  };
+  const s = states[status] || states.idle;
+  el.textContent = s.text;
+  el.style.color = s.color;
+}
+
+function getLocalFallback() {
+  try {
+    const d = localStorage.getItem('db_fallback');
+    return d ? JSON.parse(d) : { actions: {}, completed: [], milestones: {} };
+  } catch(e) { return { actions: {}, completed: [], milestones: {} }; }
+}
+function setLocalFallback(d) {
+  try { localStorage.setItem('db_fallback', JSON.stringify(d)); } catch(e) {}
+}
+
+// Debounced save — batches rapid edits into one save
+function scheduleSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    if (_cache) saveBin(_cache);
+  }, 1500);
+}
+
+// Wrapper functions matching original API
+function loadD() { return (_cache && _cache.actions) ? _cache.actions : defaultBoxData(); }
+function saveD(d) { if (!_cache) _cache = getLocalFallback(); _cache.actions = d; scheduleSave(); }
+function loadC() { return (_cache && _cache.completed) ? _cache.completed : []; }
+function saveC(d) { if (!_cache) _cache = getLocalFallback(); _cache.completed = d; scheduleSave(); }
+function loadMS() {
+  if (_cache && _cache.milestones && Object.keys(_cache.milestones).length > 0) return _cache.milestones;
+  return JSON.parse(JSON.stringify(MS_DEFAULTS));
+}
+function saveMS(d) { if (!_cache) _cache = getLocalFallback(); _cache.milestones = d; scheduleSave(); }
 
 // ═══════════════════════════════════════════════════════
 // BOX DEFINITIONS
@@ -306,12 +393,7 @@ function defaultBoxData(){
   });
   return d;
 }
-function loadD(){try{return JSON.parse(localStorage.getItem(S_DATA))||defaultBoxData()}catch(e){return defaultBoxData()}}
-function saveD(d){try{localStorage.setItem(S_DATA,JSON.stringify(d))}catch(e){}}
-function loadC(){try{return JSON.parse(localStorage.getItem(S_COMP))||[]}catch(e){return[]}}
-function saveC(d){try{localStorage.setItem(S_COMP,JSON.stringify(d))}catch(e){}}
-function loadMS(){try{return JSON.parse(localStorage.getItem(S_MS))||JSON.parse(JSON.stringify(MS_DEFAULTS))}catch(e){return JSON.parse(JSON.stringify(MS_DEFAULTS))}}
-function saveMS(d){try{localStorage.setItem(S_MS,JSON.stringify(d))}catch(e){}}
+// Storage functions defined above in JSONBIN SYNC section
 
 // ═══════════════════════════════════════════════════════
 // LINK DIALOG
@@ -733,17 +815,20 @@ function renderMS(id,rows,data){
 }
 
 // ═══════════════════════════════════════════════════════
-// INIT
+// INIT — load from JSONBin then render
 // ═══════════════════════════════════════════════════════
 document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+setSyncStatus('loading');
 
-BOXES.forEach(b=>renderBox(b.id));
-renderCompleted();
-
-const msData=loadMS();
-Object.keys(MS_DEFAULTS).forEach(id=>{
-  if(!msData[id])msData[id]=JSON.parse(JSON.stringify(MS_DEFAULTS[id]));
-  renderMS(id,msData[id],msData);
+fetchBin().then(() => {
+  BOXES.forEach(b=>renderBox(b.id));
+  renderCompleted();
+  const msData=loadMS();
+  Object.keys(MS_DEFAULTS).forEach(id=>{
+    if(!msData[id])msData[id]=JSON.parse(JSON.stringify(MS_DEFAULTS[id]));
+    renderMS(id,msData[id],msData);
+  });
+  setSyncStatus('idle');
 });
 
 // Refresh countdowns every 60 seconds
@@ -752,6 +837,15 @@ setInterval(()=>{
   Object.keys(MS_DEFAULTS).forEach(id=>renderMS(id,d[id],d));
   document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 },60000);
+
+// Re-sync from JSONBin every 5 minutes in case another device made changes
+setInterval(async ()=>{
+  await fetchBin();
+  BOXES.forEach(b=>renderBox(b.id));
+  renderCompleted();
+  const msData=loadMS();
+  Object.keys(MS_DEFAULTS).forEach(id=>renderMS(id,msData[id],msData));
+}, 300000);
 </script>
 </body>
 </html>
