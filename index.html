@@ -751,10 +751,11 @@ function renderMS(id,rows,data){
     if(row.started&&row.startedOn){
       const cls=startFreezeClass(row.start,row.startedOn);
       const lbl=startFreezeLabel(row.start,row.startedOn);
-      startedCell=`<span class="started-badge ${cls}">${lbl}</span>`;
+      startedCell=`<span class="started-badge ${cls}" style="cursor:pointer" 
+        data-id="${id}" data-idx="${i}" class="started-toggle"
+        title="Click to unmark started">${lbl} ✕</span>`;
     } else {
-      const urgent=sn!==null&&sn<=0;
-      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Check when started" ${urgent?'style="accent-color:#e74c3c"':''}/>`;
+      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Check when started"/>`;
     }
 
     html+=`<tr>
@@ -799,10 +800,24 @@ function renderMS(id,rows,data){
 
   el.querySelectorAll('.started-cb').forEach(cb=>{
     cb.addEventListener('change',()=>{
-      if(!cb.checked)return;
       const d=loadMS();const row=d[cb.dataset.id][parseInt(cb.dataset.idx)];
-      row.started=true;row.startedOn=new Date().toISOString().slice(0,10);
+      if(cb.checked){
+        row.started=true;row.startedOn=new Date().toISOString().slice(0,10);
+      } else {
+        row.started=false;row.startedOn='';
+      }
       saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  // Handle click on started badge to unmark
+  el.querySelectorAll('.started-toggle').forEach(badge=>{
+    badge.addEventListener('click',()=>{
+      const d=loadMS();const row=d[badge.dataset.id][parseInt(badge.dataset.idx)];
+      if(confirm('Remove started status for "'+row.name+'"?')){
+        row.started=false;row.startedOn='';
+        saveMS(d);renderMS(id,d[id],d);
+      }
     });
   });
 
@@ -821,6 +836,11 @@ document.getElementById('db-date').textContent=new Date().toLocaleDateString('en
 setSyncStatus('loading');
 
 fetchBin().then(() => {
+  renderAll();
+  setSyncStatus('idle');
+});
+
+function renderAll() {
   BOXES.forEach(b=>renderBox(b.id));
   renderCompleted();
   const msData=loadMS();
@@ -828,8 +848,7 @@ fetchBin().then(() => {
     if(!msData[id])msData[id]=JSON.parse(JSON.stringify(MS_DEFAULTS[id]));
     renderMS(id,msData[id],msData);
   });
-  setSyncStatus('idle');
-});
+}
 
 // Refresh countdowns every 60 seconds
 setInterval(()=>{
@@ -841,10 +860,7 @@ setInterval(()=>{
 // Re-sync from JSONBin every 5 minutes in case another device made changes
 setInterval(async ()=>{
   await fetchBin();
-  BOXES.forEach(b=>renderBox(b.id));
-  renderCompleted();
-  const msData=loadMS();
-  Object.keys(MS_DEFAULTS).forEach(id=>renderMS(id,msData[id],msData));
+  renderAll();
 }, 300000);
 </script>
 </body>
