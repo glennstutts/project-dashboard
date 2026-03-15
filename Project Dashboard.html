@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Project Operations Dashboard</title>
+<style>
+  :root {
+    --bg: #1a1a1a; --bg2: #232323; --bg3: #2a2a2a;
+    --border: #333; --border2: #444;
+    --text: #e0e0e0; --text2: #aaa; --text3: #666;
+    --blue: #2471a3; --green: #27ae60; --red: #e74c3c;
+    --orange: #e67e22; --yellow: #d4ac0d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; background: var(--bg); color: var(--text); padding: 8px; }
+
+  /* Header */
+  .db-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg2); border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
+  .db-header h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+  .db-date { font-family: monospace; font-size: 11px; color: var(--text2); }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .box { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+  .box-header { padding: 5px 8px; font-weight: 700; font-size: 11px; color: white; text-transform: uppercase; letter-spacing: .5px; }
+  .box-body { padding: 4px 6px; flex: 1; background: var(--bg2); }
+  .span2 { grid-row: span 2; }
+
+  /* Colors */
+  .c1a{background:#c0392b}.c1b{background:#148f77}.c1c{background:#1a5276}.c1d{background:#784212}
+  .c2a{background:#2471a3}.c2b{background:#626567}.c2c{background:#6c3483}.c2d{background:#1e8449}
+  .c3a{background:#d35400}.c3b{background:#4a235a}.c3c{background:#7d6608}.c3d{background:#2e4057}
+  .c4a{background:#1e8449}.c4b{background:#2c3e50}.c4c{background:#b7950b}.c4d{background:#922b21}
+
+  /* Hierarchy */
+  .h-parent { margin: 3px 0 1px; }
+  .h-parent-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-weight: 700; font-size: 11px; user-select: none; }
+  .h-parent-label:hover { background: var(--bg3); }
+  .h-chevron { font-size: 9px; transition: transform .15s; display: inline-block; color: var(--text3); }
+  .h-chevron.open { transform: rotate(90deg); }
+  .h-parent-body { padding-left: 10px; }
+  .h-sub { margin: 1px 0; }
+  .h-sub-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-size: 11px; font-weight: 600; user-select: none; }
+  .h-sub-label:hover { background: var(--bg3); }
+  .h-sub-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .h-sub-body { padding-left: 12px; }
+  .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; }
+  .h-task:hover { background: var(--bg3); }
+  .h-task.age-yellow { border-left: 2px solid #f1c40f; padding-left: 4px; }
+  .h-task.age-red { border-left: 2px solid #e74c3c; padding-left: 4px; }
+  .h-task.starred { background: rgba(241,196,15,.06); }
+  .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
+  .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
+  .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
+  .task-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
+  .h-task:hover .task-actions { display: flex; }
+  .task-star { cursor: pointer; font-size: 11px; opacity: .4; } .task-star:hover,.task-star.on { opacity: 1; }
+  .task-del { cursor: pointer; font-size: 10px; color: var(--text3); } .task-del:hover { color: #e74c3c; }
+  .age-badge { font-size: 9px; font-family: monospace; font-weight: 700; padding: 0 3px; border-radius: 3px; flex-shrink: 0; margin-top: 2px; }
+  .age-badge.yellow { background: #f1c40f22; color: #b7950b; }
+  .age-badge.red { background: #e74c3c22; color: #e74c3c; }
+  .priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .p-high{background:#e74c3c}.p-med{background:#f1c40f}.p-low{background:#27ae60}.p-none{background:transparent}
+  .add-btn { font-size: 10px; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 3px; margin: 1px 0; }
+  .add-btn:hover { color: var(--text); background: var(--bg3); }
+  .add-link-btn { font-size: 9px; color: var(--blue); cursor: pointer; padding: 1px 4px; border: 1px solid #2471a344; border-radius: 3px; margin-left: 2px; }
+  .add-link-btn:hover { background: #2471a322; }
+  .link-label { color: var(--blue); text-decoration: underline; cursor: pointer; font-size: 10px; }
+  .link-label:hover { color: #1a5276; }
+
+  /* Milestone table */
+  .ms-table { width: 100%; border-collapse: collapse; }
+  .ms-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 2px 3px; border-bottom: 1px solid var(--border); text-align: left; }
+  .ms-table td { padding: 2px 3px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .ms-table tr:last-child td { border-bottom: none; }
+  .ms-name { font-size: 11px; color: var(--text); outline: none; background: transparent; }
+  .ms-name:focus { background: var(--bg3); border-radius: 2px; }
+  .ms-input { font-family: monospace; font-size: 10px; border: 1px solid transparent; border-radius: 3px; padding: 1px 2px; background: transparent; color: var(--text); cursor: pointer; }
+  .ms-input:focus { border-color: var(--border2); background: var(--bg3); outline: none; }
+  input[type=date].ms-input { width: 90px; color-scheme: dark; }
+  input[type=number].ms-input { width: 38px; text-align: right; }
+  .cd { font-size: 10px; font-weight: 700; font-family: monospace; white-space: nowrap; }
+  .cd-overdue{color:#e74c3c}.cd-today{color:#e74c3c}.cd-soon{color:#e67e22}.cd-week{color:#d4ac0d}.cd-ok{color:#27ae60}.cd-none{color:#666}
+  .bar-wrap { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 1px; }
+  .bar-fill { height: 100%; border-radius: 2px; }
+  .pct-wrap { display: flex; align-items: center; gap: 2px; }
+  .pct-num { font-size: 9px; font-family: monospace; color: var(--text2); min-width: 20px; }
+  .started-cb { cursor: pointer; width: 12px; height: 12px; }
+  .started-badge { font-size: 9px; font-weight: 700; font-family: monospace; padding: 1px 4px; border-radius: 3px; white-space: nowrap; }
+  .sb-green{background:#27ae6022;color:#27ae60}.sb-yellow{background:#f1c40f22;color:#b7950b}
+  .sb-orange{background:#e67e2222;color:#e67e22}.sb-red{background:#e74c3c22;color:#e74c3c}
+  .add-row { font-size: 10px; color: var(--text3); cursor: pointer; padding: 3px 4px; display: block; }
+  .add-row:hover { color: var(--text); }
+
+  /* Context menu */
+  .ctx-menu { position: fixed; background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 4px; z-index: 9999; font-size: 11px; box-shadow: 0 4px 16px rgba(0,0,0,.5); min-width: 160px; }
+  .ctx-item { padding: 5px 10px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; color: var(--text); }
+  .ctx-item:hover { background: var(--bg3); }
+
+  /* Link dialog */
+  .link-dialog { position: fixed; background: var(--bg2); border: 1px solid var(--border2); border-radius: 8px; padding: 14px; z-index: 9999; box-shadow: 0 4px 24px rgba(0,0,0,.6); width: 320px; }
+  .link-dialog h4 { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--text); }
+  .link-dialog input { width: 100%; padding: 6px 8px; border: 1px solid var(--border2); border-radius: 4px; font-size: 11px; margin-bottom: 8px; background: var(--bg3); color: var(--text); outline: none; }
+  .link-dialog input:focus { border-color: var(--blue); }
+  .link-dialog-btns { display: flex; gap: 6px; justify-content: flex-end; }
+  .link-dialog-btns button { padding: 5px 12px; border-radius: 4px; border: none; cursor: pointer; font-size: 11px; font-weight: 600; }
+  .btn-save { background: var(--blue); color: white; } .btn-save:hover { background: #1a5276; }
+  .btn-cancel { background: var(--bg3); color: var(--text); } .btn-cancel:hover { background: var(--border); }
+
+  /* Completed log */
+  .completed-section { margin-top: 10px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .completed-header { padding: 7px 12px; background: #1e8449; color: white; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+  .completed-header:hover { background: #196f3d; }
+  .completed-body { padding: 8px; background: var(--bg2); display: none; }
+  .completed-body.open { display: block; }
+  .comp-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .comp-label { font-size: 10px; color: var(--text2); }
+  .comp-select { font-size: 10px; padding: 3px 6px; border: 1px solid var(--border2); border-radius: 4px; background: var(--bg3); color: var(--text); cursor: pointer; }
+  .comp-clear { font-size: 10px; padding: 3px 8px; border: 1px solid #e74c3c44; border-radius: 4px; background: #e74c3c11; color: #e74c3c; cursor: pointer; margin-left: auto; }
+  .comp-clear:hover { background: #e74c3c22; }
+  .completed-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .completed-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 3px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+  .completed-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); color: var(--text2); }
+  .completed-table tr:last-child td { border-bottom: none; }
+  .restore-btn { font-size: 9px; color: var(--blue); cursor: pointer; } .restore-btn:hover { text-decoration: underline; }
+  .grp-row td { background: var(--bg3); font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--text2); padding: 5px 6px; }
+  .no-items { font-size: 11px; color: var(--text3); font-style: italic; padding: 8px 4px; }
+</style>
+</head>
+<body>
+
+<div class="db-header">
+  <h1>📋 Project Operations Dashboard</h1>
+  <span class="db-date" id="db-date"></span>
+</div>
+
+<div class="grid">
+  <!-- Row 1 -->
+  <div class="box"><div class="box-header c1a">Same Day</div><div class="box-body" id="box-sameday"></div></div>
+  <div class="box"><div class="box-header c2a">Site Level — Same Week</div><div class="box-body" id="box-siteweek"></div></div>
+  <div class="box"><div class="box-header c3a">Vendor — Same Week</div><div class="box-body" id="box-vendorweek"></div></div>
+  <div class="box"><div class="box-header c4a">Lessons Learned</div><div class="box-body" id="box-lessons"></div></div>
+  <!-- Row 2 -->
+  <div class="box"><div class="box-header c1b">Company Level — Same Week</div><div class="box-body" id="box-company"></div></div>
+  <div class="box"><div class="box-header c2b">Back Pocket</div><div class="box-body" id="box-backpocket"></div></div>
+  <div class="box"><div class="box-header c3b">Vendor — Back Pocket</div><div class="box-body" id="box-vendorbp"></div></div>
+  <div class="box"><div class="box-header c4b">Pain Points</div><div class="box-body" id="box-painpoints"></div></div>
+  <!-- Rows 3+4: Construction -->
+  <div class="box span2"><div class="box-header c1c">Eagle Springs — Construction</div><div class="box-body" id="ms-es-con"></div></div>
+  <div class="box span2"><div class="box-header c2c">Lupinus 2 — Construction</div><div class="box-body" id="ms-l2-con"></div></div>
+  <div class="box span2"><div class="box-header c3c">Lupinus — Construction</div><div class="box-body" id="ms-lu-con"></div></div>
+  <div class="box span2"><div class="box-header c4c">Staccato — Construction</div><div class="box-body" id="ms-st-con"></div></div>
+  <!-- Rows 5+6: Contract -->
+  <div class="box span2"><div class="box-header c1d">Eagle Springs — Contract</div><div class="box-body" id="ms-es-ctr"></div></div>
+  <div class="box span2"><div class="box-header c2d">Lupinus 2 — Contract</div><div class="box-body" id="ms-l2-ctr"></div></div>
+  <div class="box span2"><div class="box-header c3d">Lupinus — Contract</div><div class="box-body" id="ms-lu-ctr"></div></div>
+  <div class="box span2"><div class="box-header c4d">Staccato — Contract</div><div class="box-body" id="ms-st-ctr"></div></div>
+</div>
+
+<!-- Completed log -->
+<div class="completed-section">
+  <div class="completed-header" id="completed-toggle">
+    ✅ Completed Items Log &nbsp;<span id="completed-count" style="font-weight:400;opacity:.8">0 items</span>
+  </div>
+  <div class="completed-body" id="completed-body"></div>
+</div>
+
+<!-- Overlays -->
+<div class="ctx-menu" id="ctx-menu" style="display:none"></div>
+<div class="link-dialog" id="link-dialog" style="display:none">
+  <h4>🔗 Add Reference Link</h4>
+  <input id="link-url" placeholder="Paste URL — SharePoint, OneDrive, Teams, any link…"/>
+  <input id="link-label" placeholder="Label (e.g. 'Schedule v3', 'RFI Log')"/>
+  <div class="link-dialog-btns">
+    <button class="btn-cancel" id="link-cancel">Cancel</button>
+    <button class="btn-save" id="link-save">Add Link</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STORAGE KEYS
+// ═══════════════════════════════════════════════════════
+const S_DATA='db_hier_v3', S_COMP='db_comp_v3', S_MS='db_ms_v3';
+
+// ═══════════════════════════════════════════════════════
+// BOX DEFINITIONS
+// ═══════════════════════════════════════════════════════
+const BOXES=[
+  {id:'box-sameday',label:'Same Day'},
+  {id:'box-siteweek',label:'Site Level'},
+  {id:'box-vendorweek',label:'Vendor Week'},
+  {id:'box-lessons',label:'Lessons Learned'},
+  {id:'box-company',label:'Company Level'},
+  {id:'box-backpocket',label:'Back Pocket'},
+  {id:'box-vendorbp',label:'Vendor BP'},
+  {id:'box-painpoints',label:'Pain Points'},
+];
+
+// ═══════════════════════════════════════════════════════
+// MILESTONE DEFAULTS — UPDATE THESE TO MATCH YOUR SCHEDULE
+// ═══════════════════════════════════════════════════════
+const MS_DEFAULTS={
+  'ms-es-con':[
+    {name:'DC Electrical Complete',start:'2025-11-17',end:'2026-02-26',dur:101,pct:100,started:true,startedOn:'2025-11-18'},
+    {name:'MV Electrical & Inverters',start:'2025-12-17',end:'2026-04-21',dur:125,pct:80,started:true,startedOn:'2025-12-17'},
+    {name:'Testing / Mechanical',start:'2026-03-10',end:'2026-06-10',dur:92,pct:0,started:false},
+    {name:'BESS Inverter Delivery',start:'2026-02-14',end:'2026-03-14',dur:28,pct:60,started:true,startedOn:'2026-02-14'},
+    {name:'BESS Battery Cooling',start:'2026-06-21',end:'2026-08-21',dur:61,pct:0,started:false},
+    {name:'Final Completion',start:'2026-10-17',end:'2026-12-17',dur:61,pct:0,started:false},
+  ],
+  'ms-l2-con':[
+    {name:'Substation Construction',start:'2026-02-27',end:'2026-04-27',dur:59,pct:20,started:true,startedOn:'2026-03-02'},
+    {name:'DC Electrical Complete',start:'2026-03-25',end:'2026-05-25',dur:61,pct:0,started:false},
+    {name:'MV Electrical',start:'2026-04-15',end:'2026-06-15',dur:61,pct:0,started:false},
+    {name:'BESS Battery Install',start:'2026-05-10',end:'2026-07-10',dur:61,pct:0,started:false},
+    {name:'Testing / Commissioning',start:'2026-06-30',end:'2026-08-31',dur:62,pct:0,started:false},
+    {name:'Final Completion',start:'2026-09-17',end:'2026-11-17',dur:61,pct:0,started:false},
+  ],
+  'ms-lu-con':[
+    {name:'DC Electrical Complete',start:'2025-11-14',end:'2026-02-14',dur:92,pct:100,started:true,startedOn:'2025-11-14'},
+    {name:'MV Electrical',start:'2025-12-15',end:'2026-03-15',dur:90,pct:75,started:true,startedOn:'2025-12-15'},
+    {name:'BESS Battery Install',start:'2026-01-10',end:'2026-04-10',dur:90,pct:40,started:true,startedOn:'2026-01-10'},
+    {name:'BESS Cooling',start:'2026-02-13',end:'2026-05-13',dur:89,pct:10,started:true,startedOn:'2026-02-20'},
+    {name:'Testing / Commissioning',start:'2026-02-13',end:'2026-05-13',dur:89,pct:0,started:false},
+    {name:'Final Completion',start:'2026-03-28',end:'2026-06-28',dur:92,pct:0,started:false},
+  ],
+  'ms-st-con':[
+    {name:'Utility Drive Path Turnover',start:'2026-04-01',end:'2026-05-01',dur:30,pct:0,started:false},
+    {name:'Substation Pad Prep',start:'2026-03-28',end:'2026-04-28',dur:31,pct:0,started:false},
+    {name:'BESS Pad Prep Complete',start:'2026-04-12',end:'2026-06-12',dur:61,pct:0,started:false},
+    {name:'Site Rep Deploy',start:'2026-04-14',end:'2026-05-14',dur:30,pct:0,started:false},
+    {name:'MBT Delivery',start:'2026-06-01',end:'2026-08-01',dur:61,pct:0,started:false},
+  ],
+  'ms-es-ctr':[
+    {name:'Mobilization',start:'2025-09-02',end:'2025-09-17',dur:15,pct:100,started:true,startedOn:'2025-09-02'},
+    {name:'Circuit Mech. (4 circuits)',start:'2025-11-03',end:'2026-02-03',dur:92,pct:100,started:true,startedOn:'2025-11-03'},
+    {name:'Startup / Sync (1st)',start:'2026-02-05',end:'2026-03-05',dur:28,pct:50,started:true,startedOn:'2026-02-10'},
+    {name:'PV Proj. Substantial',start:'2026-05-22',end:'2026-08-22',dur:92,pct:0,started:false},
+    {name:'Final Completion',start:'2026-09-17',end:'2026-12-17',dur:91,pct:0,started:false},
+  ],
+  'ms-l2-ctr':[
+    {name:'Mobilization',start:'2025-12-22',end:'2026-01-05',dur:14,pct:100,started:true,startedOn:'2025-12-22'},
+    {name:'Circuit Mechanical',start:'2026-01-11',end:'2026-01-25',dur:14,pct:100,started:true,startedOn:'2026-01-11'},
+    {name:'Startup / Sync',start:'2026-04-17',end:'2026-05-17',dur:30,pct:0,started:false},
+    {name:'PV Connect Complete',start:'2026-05-21',end:'2026-06-21',dur:31,pct:0,started:false},
+    {name:'Final Completion',start:'2027-05-27',end:'2027-08-27',dur:92,pct:0,started:false},
+  ],
+  'ms-lu-ctr':[
+    {name:'Mobilization',start:'2025-10-06',end:'2025-10-20',dur:14,pct:100,started:true,startedOn:'2025-10-06'},
+    {name:'Circuit Mechanical',start:'2026-01-13',end:'2026-01-27',dur:14,pct:100,started:true,startedOn:'2026-01-13'},
+    {name:'Startup / Sync',start:'2026-03-03',end:'2026-03-17',dur:14,pct:100,started:true,startedOn:'2026-03-10'},
+    {name:'Proj. Substantial',start:'2026-05-21',end:'2026-08-21',dur:92,pct:0,started:false},
+    {name:'Final Completion',start:'2026-08-09',end:'2026-11-08',dur:91,pct:0,started:false},
+  ],
+  'ms-st-ctr':[
+    {name:'NTP / Mobilization',start:'2026-02-15',end:'2026-03-01',dur:14,pct:10,started:true,startedOn:'2026-02-20'},
+    {name:'Substation Energization',start:'2026-08-15',end:'2026-09-15',dur:31,pct:0,started:false},
+    {name:'BESS Commissioning',start:'2026-09-01',end:'2026-10-01',dur:30,pct:0,started:false},
+    {name:'Proj. Substantial',start:'2026-10-01',end:'2026-11-01',dur:31,pct:0,started:false},
+    {name:'Final Completion',start:'2026-11-15',end:'2026-12-15',dur:30,pct:0,started:false},
+  ],
+};
+
+// ═══════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════
+function uid(){return Math.random().toString(36).slice(2,9)}
+function today(){const d=new Date();d.setHours(0,0,0,0);return d}
+function daysDiff(ds){if(!ds)return null;const t=today(),d=new Date(ds);d.setHours(0,0,0,0);return Math.ceil((d-t)/86400000)}
+function ageDays(ts){return Math.floor((Date.now()-(ts||Date.now()))/864e5)}
+function ageClass(ts){const d=ageDays(ts);if(d>=14)return'red';if(d>=7)return'yellow';return''}
+function ageBadge(ts){const d=ageDays(ts);if(d>=14)return`<span class="age-badge red">${d}d</span>`;if(d>=7)return`<span class="age-badge yellow">${d}d</span>`;return''}
+function priorityDot(p){return`<div class="priority-dot p-${p||'none'}"></div>`}
+function isURL(s){return typeof s==='string'&&(s.startsWith('http://')||s.startsWith('https://'))}
+
+function startFreezeClass(planned,actual){
+  if(!planned||!actual)return'sb-green';
+  const p=new Date(planned);p.setHours(0,0,0,0);
+  const a=new Date(actual);a.setHours(0,0,0,0);
+  const diff=Math.ceil((a-p)/86400000);
+  if(diff<=0)return'sb-green';
+  if(diff<=7)return'sb-yellow';
+  if(diff<=14)return'sb-orange';
+  return'sb-red';
+}
+function startFreezeLabel(planned,actual){
+  if(!planned||!actual)return'Started';
+  const p=new Date(planned);p.setHours(0,0,0,0);
+  const a=new Date(actual);a.setHours(0,0,0,0);
+  const diff=Math.ceil((a-p)/86400000);
+  if(diff<=0)return diff===0?'On time':`${Math.abs(diff)}d early ✓`;
+  return`${diff}d late`;
+}
+
+// ═══════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════
+function defaultBoxData(){
+  const d={};
+  BOXES.forEach(b=>{
+    d[b.id]={parents:[{id:uid(),label:'Group 1',open:true,color:'#888',subs:[
+      {id:uid(),label:'Subgroup',color:'#888',open:true,tasks:[]}
+    ]}]};
+  });
+  return d;
+}
+function loadD(){try{return JSON.parse(localStorage.getItem(S_DATA))||defaultBoxData()}catch(e){return defaultBoxData()}}
+function saveD(d){try{localStorage.setItem(S_DATA,JSON.stringify(d))}catch(e){}}
+function loadC(){try{return JSON.parse(localStorage.getItem(S_COMP))||[]}catch(e){return[]}}
+function saveC(d){try{localStorage.setItem(S_COMP,JSON.stringify(d))}catch(e){}}
+function loadMS(){try{return JSON.parse(localStorage.getItem(S_MS))||JSON.parse(JSON.stringify(MS_DEFAULTS))}catch(e){return JSON.parse(JSON.stringify(MS_DEFAULTS))}}
+function saveMS(d){try{localStorage.setItem(S_MS,JSON.stringify(d))}catch(e){}}
+
+// ═══════════════════════════════════════════════════════
+// LINK DIALOG
+// ═══════════════════════════════════════════════════════
+let linkTarget=null;
+document.getElementById('link-cancel').onclick=()=>document.getElementById('link-dialog').style.display='none';
+document.getElementById('link-save').onclick=()=>{
+  const url=document.getElementById('link-url').value.trim();
+  const label=document.getElementById('link-label').value.trim()||url.slice(0,40);
+  if(!url||!linkTarget)return;
+  const d=loadD();const{boxId,pi,si,ti}=linkTarget;
+  const task=d[boxId].parents[pi].subs[si].tasks[ti];
+  if(!task.links)task.links=[];
+  task.links.push({url,label});
+  saveD(d);
+  document.getElementById('link-dialog').style.display='none';
+  document.getElementById('link-url').value='';
+  document.getElementById('link-label').value='';
+  renderBox(boxId);
+};
+function showLinkDialog(boxId,pi,si,ti){
+  linkTarget={boxId,pi:parseInt(pi),si:parseInt(si),ti:parseInt(ti)};
+  const dlg=document.getElementById('link-dialog');
+  dlg.style.display='block';
+  dlg.style.left='50%';dlg.style.top='40%';dlg.style.transform='translate(-50%,-50%)';
+  document.getElementById('link-url').focus();
+}
+
+// ═══════════════════════════════════════════════════════
+// RENDER ACTION BOX
+// ═══════════════════════════════════════════════════════
+function renderBox(boxId){
+  const el=document.getElementById(boxId);if(!el)return;
+  const data=loadD();const box=data[boxId]||{parents:[]};
+  let html='';
+
+  box.parents.forEach((parent,pi)=>{
+    html+=`<div class="h-parent">
+      <div class="h-parent-label" data-box="${boxId}" data-pi="${pi}">
+        <span class="h-chevron ${parent.open?'open':''}">▶</span>
+        <span style="flex:1" contenteditable="true" class="parent-name" data-box="${boxId}" data-pi="${pi}">${parent.label}</span>
+        <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="add-sub">＋ group</span>
+        <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="del-parent" style="color:#e74c3c">✕</span>
+      </div>`;
+
+    if(parent.open){
+      html+=`<div class="h-parent-body">`;
+      parent.subs.forEach((sub,si)=>{
+        html+=`<div class="h-sub">
+          <div class="h-sub-label" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
+            <div class="h-chevron ${sub.open?'open':''}">▶</div>
+            <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
+            <span style="flex:1" contenteditable="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
+            <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="add-task">＋ task</span>
+            <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
+          </div>`;
+
+        if(sub.open){
+          html+=`<div class="h-sub-body">`;
+          (sub.tasks||[]).forEach((task,ti)=>{
+            const ac=ageClass(task.created||Date.now());
+            html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
+              <input type="checkbox" class="task-cb" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
+              ${priorityDot(task.priority)}
+              <div style="flex:1">
+                <div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text||''}</div>
+                ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> `).join('')}
+              </div>
+              ${ageBadge(task.created||Date.now())}
+              <div class="task-actions">
+                <span class="task-star${task.star?' on':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Star">⭐</span>
+                <span class="add-link-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add link">🔗</span>
+                <span class="task-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Delete">✕</span>
+              </div>
+            </div>`;
+          });
+          html+=`</div>`;
+        }
+        html+=`</div>`;
+      });
+      html+=`<span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="add-sub" style="margin-left:8px">＋ add subgroup</span>`;
+      html+=`</div>`;
+    }
+    html+=`</div>`;
+  });
+
+  html+=`<span class="add-btn" data-box="${boxId}" data-action="add-parent">＋ add parent group</span>`;
+  el.innerHTML=html;
+  bindBox(boxId);
+}
+
+function bindBox(boxId){
+  const el=document.getElementById(boxId);if(!el)return;
+
+  el.querySelectorAll('.h-parent-label').forEach(lbl=>{
+    lbl.addEventListener('click',e=>{
+      if(e.target.isContentEditable||e.target.classList.contains('add-btn'))return;
+      const d=loadD();d[boxId].parents[parseInt(lbl.dataset.pi)].open=!d[boxId].parents[parseInt(lbl.dataset.pi)].open;saveD(d);renderBox(boxId);
+    });
+  });
+
+  el.querySelectorAll('.h-sub-label').forEach(lbl=>{
+    lbl.addEventListener('click',e=>{
+      if(e.target.isContentEditable||e.target.classList.contains('add-btn'))return;
+      const d=loadD();const p=d[boxId].parents[parseInt(lbl.dataset.pi)];
+      p.subs[parseInt(lbl.dataset.si)].open=!p.subs[parseInt(lbl.dataset.si)].open;saveD(d);renderBox(boxId);
+    });
+  });
+
+  el.querySelectorAll('.parent-name').forEach(s=>{
+    s.addEventListener('blur',()=>{const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].label=s.textContent.trim();saveD(d)});
+    s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
+  });
+
+  el.querySelectorAll('.sub-name').forEach(s=>{
+    s.addEventListener('blur',()=>{
+      const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].subs[parseInt(s.dataset.si)].label=s.textContent.trim();saveD(d);
+    });
+    s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
+  });
+
+  el.querySelectorAll('.task-text').forEach(s=>{
+    s.addEventListener('blur',()=>{
+      const d=loadD();const{pi,si,ti}=s.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      const txt=s.textContent.trim();
+      if(isURL(txt)){
+        if(!task.links)task.links=[];
+        task.links.push({url:txt,label:txt.slice(0,50)});
+        task.text='(link)';
+      } else { task.text=txt; }
+      saveD(d);renderBox(boxId);
+    });
+    s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
+  });
+
+  el.querySelectorAll('.task-cb').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      if(!cb.checked)return;
+      const d=loadD();const{pi,si,ti}=cb.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      const parent=d[boxId].parents[parseInt(pi)];
+      const sub=parent.subs[parseInt(si)];
+      const comp=loadC();
+      comp.unshift({
+        text:task.text,links:task.links||[],
+        box:BOXES.find(b=>b.id===boxId)?.label||boxId,boxId,
+        parent:parent.label,sub:sub.label,subColor:sub.color||'#888',
+        priority:task.priority||'none',star:task.star||false,
+        createdDaysAgo:ageDays(task.created||Date.now()),
+        completedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+        pi:parseInt(pi),si:parseInt(si)
+      });
+      saveC(comp);
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.splice(parseInt(ti),1);
+      saveD(d);renderBox(boxId);renderCompleted();
+    });
+  });
+
+  el.querySelectorAll('.task-star').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      task.star=!task.star;saveD(d);renderBox(boxId);
+    });
+  });
+
+  el.querySelectorAll('.add-link-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{e.stopPropagation();showLinkDialog(boxId,btn.dataset.pi,btn.dataset.si,btn.dataset.ti)});
+  });
+
+  el.querySelectorAll('.task-del').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.splice(parseInt(ti),1);saveD(d);renderBox(boxId);
+    });
+  });
+
+  el.querySelectorAll('.h-task').forEach(row=>{
+    row.addEventListener('contextmenu',e=>{
+      e.preventDefault();const{pi,si,ti}=row.dataset;
+      showCtx(e.clientX,e.clientY,[
+        {label:'🔴 High priority',action:()=>setPriority(boxId,pi,si,ti,'high')},
+        {label:'🟡 Medium priority',action:()=>setPriority(boxId,pi,si,ti,'med')},
+        {label:'🟢 Low priority',action:()=>setPriority(boxId,pi,si,ti,'low')},
+        {label:'⬜ No priority',action:()=>setPriority(boxId,pi,si,ti,'none')},
+        {label:'🔗 Add link',action:()=>showLinkDialog(boxId,pi,si,ti)},
+      ]);
+    });
+  });
+
+  el.querySelectorAll('.add-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,action}=btn.dataset;
+      if(action==='add-parent'){d[boxId].parents.push({id:uid(),label:'New Group',open:true,color:'#888',subs:[]})}
+      else if(action==='add-sub'){d[boxId].parents[parseInt(pi)].subs.push({id:uid(),label:'New Subgroup',color:'#888',open:true,tasks:[]})}
+      else if(action==='del-parent'){d[boxId].parents.splice(parseInt(pi),1)}
+      else if(action==='del-sub'){d[boxId].parents[parseInt(pi)].subs.splice(parseInt(si),1)}
+      else if(action==='add-task'){d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.push({id:uid(),text:'New item',star:false,priority:'none',created:Date.now(),links:[]})}
+      saveD(d);renderBox(boxId);
+    });
+  });
+}
+
+function setPriority(boxId,pi,si,ti,p){
+  const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].priority=p;saveD(d);renderBox(boxId);
+}
+
+// ═══════════════════════════════════════════════════════
+// CONTEXT MENU
+// ═══════════════════════════════════════════════════════
+function showCtx(x,y,items){
+  const menu=document.getElementById('ctx-menu');
+  menu.innerHTML=items.map((item,i)=>`<div class="ctx-item" data-idx="${i}">${item.label}</div>`).join('');
+  menu.style.display='block';menu.style.left=x+'px';menu.style.top=y+'px';
+  menu.querySelectorAll('.ctx-item').forEach((el,i)=>el.addEventListener('click',()=>{items[i].action();menu.style.display='none'}));
+}
+document.addEventListener('click',()=>document.getElementById('ctx-menu').style.display='none');
+
+// ═══════════════════════════════════════════════════════
+// COMPLETED LOG
+// ═══════════════════════════════════════════════════════
+let compSort='date', compFilter='all';
+
+function renderCompleted(){
+  const body=document.getElementById('completed-body');
+  const count=document.getElementById('completed-count');
+  if(!body)return;
+  const comp=loadC();
+  count.textContent=`${comp.length} item${comp.length!==1?'s':''}`;
+
+  const sites=[...new Set(comp.map(c=>c.sub).filter(Boolean))].sort();
+  const boxes=[...new Set(comp.map(c=>c.box).filter(Boolean))].sort();
+
+  let html=`<div class="comp-toolbar">
+    <span class="comp-label">Sort:</span>
+    <select class="comp-select" id="comp-sort-sel">
+      <option value="date" ${compSort==='date'?'selected':''}>Date completed</option>
+      <option value="site" ${compSort==='site'?'selected':''}>Site / Subgroup</option>
+      <option value="box" ${compSort==='box'?'selected':''}>Box</option>
+      <option value="age" ${compSort==='age'?'selected':''}>Days open (longest first)</option>
+    </select>
+    <span class="comp-label">Filter:</span>
+    <select class="comp-select" id="comp-filter-sel">
+      <option value="all" ${compFilter==='all'?'selected':''}>All items</option>
+      <optgroup label="By Box">${boxes.map(b=>`<option value="box:${b}" ${compFilter==='box:'+b?'selected':''}>${b}</option>`).join('')}</optgroup>
+      <optgroup label="By Site">${sites.map(s=>`<option value="site:${s}" ${compFilter==='site:'+s?'selected':''}>📍 ${s}</option>`).join('')}</optgroup>
+    </select>
+    <button class="comp-clear" id="comp-clear-btn">🗑 Clear all completed</button>
+  </div>`;
+
+  let filtered=comp;
+  if(compFilter!=='all'){
+    const[type,val]=compFilter.split(':');
+    filtered=comp.filter(c=>type==='box'?c.box===val:c.sub===val);
+  }
+
+  const sorted=[...filtered];
+  if(compSort==='site') sorted.sort((a,b)=>(a.sub||'').localeCompare(b.sub||''));
+  else if(compSort==='box') sorted.sort((a,b)=>(a.box||'').localeCompare(b.box||''));
+  else if(compSort==='age') sorted.sort((a,b)=>b.createdDaysAgo-a.createdDaysAgo);
+
+  if(sorted.length===0){
+    html+=`<div class="no-items">No completed items yet. Check off tasks above and they'll appear here.</div>`;
+    body.innerHTML=html;bindCompControls();return;
+  }
+
+  html+=`<table class="completed-table"><thead><tr>
+    <th>Item</th><th>Site / Group</th><th>Box</th><th>Days open</th><th>Completed</th><th></th>
+  </tr></thead><tbody>`;
+
+  let lastGrp='';
+  sorted.forEach(item=>{
+    const origIdx=comp.indexOf(item);
+    if(compSort==='site'||compSort==='box'){
+      const grp=compSort==='site'?item.sub:item.box;
+      if(grp!==lastGrp){
+        html+=`<tr class="grp-row"><td colspan="6">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.subColor||'#888'};margin-right:6px;vertical-align:middle"></span>
+          ${grp}
+        </td></tr>`;
+        lastGrp=grp;
+      }
+    }
+    const ageC=item.createdDaysAgo>=14?'#e74c3c':item.createdDaysAgo>=7?'#d4ac0d':'#27ae60';
+    html+=`<tr>
+      <td>${item.star?'⭐ ':''}${item.text||'—'}
+        ${(item.links||[]).map(l=>`<br><a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a>`).join('')}
+      </td>
+      <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${item.subColor||'#888'};margin-right:4px;vertical-align:middle"></span>${item.sub||'—'}</td>
+      <td style="font-size:10px;color:#666">${item.box}</td>
+      <td style="font-family:monospace;font-size:10px;color:${ageC}">${item.createdDaysAgo}d</td>
+      <td style="font-family:monospace;font-size:10px">${item.completedAt}</td>
+      <td><span class="restore-btn" data-orig="${origIdx}" title="Restore to open items">↩</span></td>
+    </tr>`;
+  });
+  html+=`</tbody></table>`;
+  body.innerHTML=html;
+  bindCompControls();
+}
+
+function bindCompControls(){
+  const ss=document.getElementById('comp-sort-sel');
+  const fs=document.getElementById('comp-filter-sel');
+  const clr=document.getElementById('comp-clear-btn');
+  if(ss)ss.addEventListener('change',()=>{compSort=ss.value;renderCompleted()});
+  if(fs)fs.addEventListener('change',()=>{compFilter=fs.value;renderCompleted()});
+  if(clr)clr.addEventListener('click',()=>{
+    if(confirm('Clear all completed items? This cannot be undone.')){saveC([]);compFilter='all';renderCompleted()}
+  });
+  document.querySelectorAll('.restore-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const idx=parseInt(btn.dataset.orig);const comp=loadC();const item=comp[idx];
+      const d=loadD();
+      if(d[item.boxId]?.parents?.[item.pi]?.subs?.[item.si]){
+        d[item.boxId].parents[item.pi].subs[item.si].tasks.push({id:uid(),text:item.text,star:item.star,priority:item.priority,created:Date.now(),links:item.links||[]});
+      }
+      comp.splice(idx,1);saveC(comp);saveD(d);
+      BOXES.forEach(b=>renderBox(b.id));renderCompleted();
+    });
+  });
+}
+
+document.getElementById('completed-toggle').addEventListener('click',()=>{
+  document.getElementById('completed-body').classList.toggle('open');
+});
+
+// ═══════════════════════════════════════════════════════
+// MILESTONE RENDERER
+// ═══════════════════════════════════════════════════════
+function cdHTML(n){
+  if(n===null)return'<span class="cd cd-none">—</span>';
+  if(n<0)return`<span class="cd cd-overdue">${Math.abs(n)}d over</span>`;
+  if(n===0)return'<span class="cd cd-today">TODAY</span>';
+  if(n<=7)return`<span class="cd cd-soon">${n}d</span>`;
+  if(n<=30)return`<span class="cd cd-week">${n}d</span>`;
+  return`<span class="cd cd-ok">${n}d</span>`;
+}
+function barC(n){if(n===null||n<0)return'#e74c3c';if(n<=7)return'#e67e22';if(n<=30)return'#d4ac0d';return'#27ae60'}
+function barW(n){if(n===null||n<=0)return 100;return Math.max(4,Math.min(100,(1-n/180)*100))}
+
+function renderMS(id,rows,data){
+  const el=document.getElementById(id);if(!el)return;
+  let html=`<table class="ms-table"><thead><tr>
+    <th>Milestone</th><th>Start</th><th>End</th><th title="Duration (days)">Dur</th><th>%</th><th>Started</th><th>Countdown to End</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach((row,i)=>{
+    const n=daysDiff(row.end);const sn=daysDiff(row.start);const pct=row.pct||0;
+
+    let startedCell='';
+    if(row.started&&row.startedOn){
+      const cls=startFreezeClass(row.start,row.startedOn);
+      const lbl=startFreezeLabel(row.start,row.startedOn);
+      startedCell=`<span class="started-badge ${cls}">${lbl}</span>`;
+    } else {
+      const urgent=sn!==null&&sn<=0;
+      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Check when started" ${urgent?'style="accent-color:#e74c3c"':''}/>`;
+    }
+
+    html+=`<tr>
+      <td><div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}">${row.name}</div></td>
+      <td><input type="date" class="ms-input" value="${row.start||''}" data-id="${id}" data-idx="${i}" data-field="start"/></td>
+      <td><input type="date" class="ms-input" value="${row.end||''}" data-id="${id}" data-idx="${i}" data-field="end"/></td>
+      <td><input type="number" class="ms-input" value="${row.dur||''}" min="1" max="9999" data-id="${id}" data-idx="${i}" data-field="dur"/></td>
+      <td>
+        <div class="pct-wrap">
+          <input type="number" class="ms-input" value="${pct}" min="0" max="100" data-id="${id}" data-idx="${i}" data-field="pct" style="width:32px"/>
+          <span class="pct-num">%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${pct}%;background:var(--blue)"></div></div>
+      </td>
+      <td>${startedCell}</td>
+      <td>${cdHTML(n)}<div class="bar-wrap"><div class="bar-fill" style="width:${barW(n)}%;background:${barC(n)}"></div></div></td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table><span class="add-row" data-id="${id}">+ Add milestone</span>`;
+  el.innerHTML=html;
+
+  el.querySelectorAll('.ms-input').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const d=loadMS();const row=d[inp.dataset.id][parseInt(inp.dataset.idx)];const field=inp.dataset.field;
+      if(field==='pct'||field==='dur') row[field]=parseInt(inp.value)||0;
+      else row[field]=inp.value;
+      if((field==='start'||field==='end')&&row.start&&row.end){
+        const s=new Date(row.start),e=new Date(row.end);
+        if(e>s)row.dur=Math.ceil((e-s)/86400000);
+      } else if(field==='dur'&&row.start&&row.dur){
+        const s=new Date(row.start);s.setDate(s.getDate()+parseInt(row.dur));
+        row.end=s.toISOString().slice(0,10);
+      }
+      saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.ms-name').forEach(div=>{
+    div.addEventListener('blur',()=>{const d=loadMS();d[div.dataset.id][parseInt(div.dataset.idx)].name=div.textContent.trim();saveMS(d)});
+  });
+
+  el.querySelectorAll('.started-cb').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      if(!cb.checked)return;
+      const d=loadMS();const row=d[cb.dataset.id][parseInt(cb.dataset.idx)];
+      row.started=true;row.startedOn=new Date().toISOString().slice(0,10);
+      saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.add-row').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const d=loadMS();d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false});
+      saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+BOXES.forEach(b=>renderBox(b.id));
+renderCompleted();
+
+const msData=loadMS();
+Object.keys(MS_DEFAULTS).forEach(id=>{
+  if(!msData[id])msData[id]=JSON.parse(JSON.stringify(MS_DEFAULTS[id]));
+  renderMS(id,msData[id],msData);
+});
+
+// Refresh countdowns every 60 seconds
+setInterval(()=>{
+  const d=loadMS();
+  Object.keys(MS_DEFAULTS).forEach(id=>renderMS(id,d[id],d));
+  document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+},60000);
+</script>
+</body>
+</html>
