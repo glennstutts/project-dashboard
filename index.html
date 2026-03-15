@@ -64,9 +64,7 @@
   .age-badge.red { background: #e74c3c22; color: #e74c3c; }
   .priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
   .p-high{background:#e74c3c}.p-med{background:#f1c40f}.p-low{background:#27ae60}.p-none{background:transparent}
-  .flag-icon{font-size:11px;flex-shrink:0;margin-top:1px;opacity:0}
-  .h-task.priority-high .flag-icon{opacity:1;color:#e74c3c}
-  .h-task.starred .flag-icon{opacity:0}
+
   .add-btn { font-size: 10px; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 3px; margin: 1px 0; }
   .add-btn:hover { color: var(--text); background: var(--bg3); }
   .add-link-btn { font-size: 9px; color: var(--blue); cursor: pointer; padding: 1px 4px; border: 1px solid #2471a344; border-radius: 3px; margin-left: 2px; }
@@ -198,24 +196,45 @@ let _cache = null;
 let _saveTimer = null;
 let _syncStatus = 'idle';
 
+function countData(d) {
+  if (!d) return 0;
+  const tasks = Object.values(d.actions||{}).reduce((t,b)=>t+(b.parents||[]).reduce((tt,p)=>tt+(p.subs||[]).reduce((ts,s)=>ts+(s.tasks||[]).length,0),0),0);
+  const ms = Object.values(d.milestones||{}).reduce((t,arr)=>t+(arr||[]).length,0);
+  const comp = (d.completed||[]).length;
+  return tasks + ms + comp;
+}
+
 async function fetchBin() {
   try {
     const r = await fetch(JSONBIN_URL + '/latest', {
       headers: { 'X-Master-Key': JSONBIN_KEY }
     });
     const j = await r.json();
-    _cache = j.record || { actions: {}, completed: [], milestones: {} };
+    const remote = j.record || { actions: {}, completed: [], milestones: {} };
+    const remoteCount = countData(remote);
+    const localCount = countData(_cache);
+    // Only overwrite local with remote if remote has MORE data
+    // This prevents a blank JSONBin from wiping local edits
+    if (remoteCount >= localCount) {
+      _cache = remote;
+      setLocalFallback(_cache);
+      console.log('Loaded from JSONBin:', remoteCount, 'items');
+    } else {
+      console.log('Kept local data (more items than remote):', localCount, 'vs', remoteCount);
+      // Push local data up to JSONBin to fix the mismatch
+      if (_cache) saveBin(_cache);
+    }
     return _cache;
   } catch(e) {
     console.warn('JSONBin fetch failed, using localStorage fallback', e);
-    _cache = getLocalFallback();
+    if (!_cache) _cache = getLocalFallback();
     return _cache;
   }
 }
 
 async function saveBin(data) {
   _cache = data;
-  setLocalFallback(data);
+  setLocalFallback(data); // Always save locally first as backup
   setSyncStatus('saving');
   try {
     await fetch(JSONBIN_URL, {
@@ -223,6 +242,9 @@ async function saveBin(data) {
       headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
       body: JSON.stringify(data)
     });
+    const actionCount = Object.values(data.actions||{}).reduce((t,b)=>t+(b.parents||[]).reduce((tt,p)=>tt+(p.subs||[]).reduce((ts,s)=>ts+(s.tasks||[]).length,0),0),0);
+    const msCount = Object.values(data.milestones||{}).reduce((t,arr)=>t+(arr||[]).length,0);
+    console.log(`JSONBin saved: ${actionCount} tasks, ${msCount} milestones, ${(data.completed||[]).length} completed`);
     setSyncStatus('saved');
     setTimeout(() => setSyncStatus('idle'), 2000);
   } catch(e) {
@@ -261,8 +283,11 @@ function setLocalFallback(d) {
 function scheduleSave() {
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
-    if (_cache) saveBin(_cache);
-  }, 1500);
+    if (_cache) {
+      saveBin(_cache);
+      _saveTimer = null;
+    }
+  }, 800);
 }
 
 // Wrapper functions matching original API
@@ -270,14 +295,20 @@ function loadD() {
   if (_cache && _cache.actions && Object.keys(_cache.actions).length > 0) return _cache.actions;
   return defaultBoxData();
 }
-function saveD(d) { if (!_cache) _cache = getLocalFallback(); _cache.actions = d; scheduleSave(); }
+function ensureCache() {
+  if (!_cache) _cache = { actions: {}, completed: [], milestones: {} };
+  if (!_cache.actions) _cache.actions = {};
+  if (!_cache.completed) _cache.completed = [];
+  if (!_cache.milestones) _cache.milestones = {};
+}
+function saveD(d) { ensureCache(); _cache.actions = d; scheduleSave(); }
 function loadC() { return (_cache && Array.isArray(_cache.completed)) ? _cache.completed : []; }
-function saveC(d) { if (!_cache) _cache = getLocalFallback(); _cache.completed = d; scheduleSave(); }
+function saveC(d) { ensureCache(); _cache.completed = d; scheduleSave(); }
 function loadMS() {
   if (_cache && _cache.milestones && Object.keys(_cache.milestones).length > 0) return _cache.milestones;
   return JSON.parse(JSON.stringify(MS_DEFAULTS));
 }
-function saveMS(d) { if (!_cache) _cache = getLocalFallback(); _cache.milestones = d; scheduleSave(); }
+function saveMS(d) { ensureCache(); _cache.milestones = d; scheduleSave(); }
 
 // ═══════════════════════════════════════════════════════
 // BOX DEFINITIONS
@@ -469,7 +500,7 @@ function renderBox(boxId){
             html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}${isHighPriority?' priority-high':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
               <input type="checkbox" class="task-cb" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
               ${priorityDot(task.priority)}
-              <span class="flag-icon" title="High priority">🚩</span>
+              <span class="flag-icon" style="display:${isHighPriority?'inline':'none'}" title="High priority">🚩</span>
               <div style="flex:1">
                 <div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text||''}</div>
                 ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> `).join('')}
@@ -940,8 +971,12 @@ setInterval(()=>{
   document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 },60000);
 
-// Re-sync from JSONBin every 5 minutes in case another device made changes
+// Re-sync from JSONBin every 5 minutes — only if no pending save
 setInterval(async ()=>{
+  if (_saveTimer) {
+    console.log('Skipping re-sync — save pending');
+    return;
+  }
   await fetchBin();
   renderAll();
 }, 300000);
