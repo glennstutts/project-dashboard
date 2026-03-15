@@ -261,9 +261,12 @@ function scheduleSave() {
 }
 
 // Wrapper functions matching original API
-function loadD() { return (_cache && _cache.actions) ? _cache.actions : defaultBoxData(); }
+function loadD() {
+  if (_cache && _cache.actions && Object.keys(_cache.actions).length > 0) return _cache.actions;
+  return defaultBoxData();
+}
 function saveD(d) { if (!_cache) _cache = getLocalFallback(); _cache.actions = d; scheduleSave(); }
-function loadC() { return (_cache && _cache.completed) ? _cache.completed : []; }
+function loadC() { return (_cache && Array.isArray(_cache.completed)) ? _cache.completed : []; }
 function saveC(d) { if (!_cache) _cache = getLocalFallback(); _cache.completed = d; scheduleSave(); }
 function loadMS() {
   if (_cache && _cache.milestones && Object.keys(_cache.milestones).length > 0) return _cache.milestones;
@@ -748,14 +751,16 @@ function renderMS(id,rows,data){
     const n=daysDiff(row.end);const sn=daysDiff(row.start);const pct=row.pct||0;
 
     let startedCell='';
-    if(row.started&&row.startedOn){
+    if(row.started && row.startedOn){
       const cls=startFreezeClass(row.start,row.startedOn);
       const lbl=startFreezeLabel(row.start,row.startedOn);
-      startedCell=`<span class="started-badge ${cls}" style="cursor:pointer" 
-        data-id="${id}" data-idx="${i}" class="started-toggle"
-        title="Click to unmark started">${lbl} ✕</span>`;
+      startedCell=`<div>
+        <span class="started-badge ${cls}">${lbl}</span>
+        <div style="font-size:9px;color:#666;margin-top:1px;cursor:pointer" 
+          data-id="${id}" data-idx="${i}" class="unstart-btn">✕ unmark</div>
+      </div>`;
     } else {
-      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Check when started"/>`;
+      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Mark as started — click even if overdue"/>`;
     }
 
     html+=`<tr>
@@ -801,23 +806,17 @@ function renderMS(id,rows,data){
   el.querySelectorAll('.started-cb').forEach(cb=>{
     cb.addEventListener('change',()=>{
       const d=loadMS();const row=d[cb.dataset.id][parseInt(cb.dataset.idx)];
-      if(cb.checked){
-        row.started=true;row.startedOn=new Date().toISOString().slice(0,10);
-      } else {
-        row.started=false;row.startedOn='';
-      }
+      row.started=true;
+      row.startedOn=new Date().toISOString().slice(0,10);
       saveMS(d);renderMS(id,d[id],d);
     });
   });
 
-  // Handle click on started badge to unmark
-  el.querySelectorAll('.started-toggle').forEach(badge=>{
-    badge.addEventListener('click',()=>{
-      const d=loadMS();const row=d[badge.dataset.id][parseInt(badge.dataset.idx)];
-      if(confirm('Remove started status for "'+row.name+'"?')){
-        row.started=false;row.startedOn='';
-        saveMS(d);renderMS(id,d[id],d);
-      }
+  el.querySelectorAll('.unstart-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const d=loadMS();const row=d[btn.dataset.id][parseInt(btn.dataset.idx)];
+      row.started=false;row.startedOn='';
+      saveMS(d);renderMS(id,d[id],d);
     });
   });
 
