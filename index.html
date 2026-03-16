@@ -13,19 +13,29 @@
     --orange: #e67e22; --yellow: #d4ac0d;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; background: var(--bg); color: var(--text); padding: 8px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 12px; background: var(--bg); color: var(--text); padding: 8px; min-width: max-content; }
 
   /* Header */
   .db-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg2); border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
+  /* Floating format toolbar */
+  .fmt-toolbar { position: fixed; background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px; padding: 3px 6px; display: none; gap: 2px; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,.4); align-items: center; }
+  .fmt-toolbar.visible { display: flex; }
+  .fmt-btn { background: none; border: none; color: var(--text); cursor: pointer; padding: 2px 6px; border-radius: 3px; font-size: 12px; line-height: 1; }
+  .fmt-btn:hover { background: var(--bg3); }
+  .fmt-btn.active { background: var(--border2); }
+  .fmt-sep { width: 1px; height: 14px; background: var(--border2); margin: 0 2px; }
+  .fmt-size { font-size: 10px; background: var(--bg3); border: 1px solid var(--border2); color: var(--text); border-radius: 3px; padding: 1px 3px; width: 36px; }
   .db-header h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
   .db-date { font-family: monospace; font-size: 11px; color: var(--text2); }
 
   /* Grid */
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; align-items: start; width: 100%; }
   .box { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
   .box-header { padding: 5px 8px; font-weight: 700; font-size: 11px; color: white; text-transform: uppercase; letter-spacing: .5px; }
-  .box-body { padding: 4px 6px; flex: 1; background: var(--bg2); }
+  .box-body { padding: 4px 6px; flex: 1; background: var(--bg2); min-height: 60px; }
+  .box { border: 1px solid #ccc; border-radius: 4px; overflow: visible; display: flex; flex-direction: column; min-width: 140px; }
   .span2 { grid-row: span 2; }
+  .grid { align-items: start; }
 
   /* Colors */
   .c1a{background:#c0392b}.c1b{background:#148f77}.c1c{background:#1a5276}.c1d{background:#784212}
@@ -45,7 +55,13 @@
   .h-sub-label:hover { background: var(--bg3); }
   .h-sub-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .h-sub-body { padding-left: 12px; }
-  .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; }
+  .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; cursor: grab; }
+  .h-task.dragging { opacity: 0.4; cursor: grabbing; }
+  .h-task.drag-over { border-top: 2px solid #2471a3; }
+  .h-sub.dragging-sub { opacity: 0.4; }
+  .h-sub.drag-over-sub { border-top: 2px solid #27ae60; }
+  .drag-handle { font-size: 10px; color: var(--text3); cursor: grab; flex-shrink: 0; padding: 0 2px; margin-top: 2px; opacity: 0; }
+  .h-task:hover .drag-handle { opacity: 1; }
   .h-task:hover { background: var(--bg3); }
   .h-task.age-yellow { border-left: 2px solid #f1c40f; padding-left: 4px; }
   .h-task.age-red { border-left: 2px solid #e74c3c; padding-left: 4px; }
@@ -78,8 +94,8 @@
   .h-sub-label.sub-priority-low { background: rgba(39,174,96,0.08); border-left: 2px solid #27ae60; padding-left: 2px; border-radius: 3px; }
 
   /* Milestone scrollable */
-  .ms-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .ms-table { min-width: 480px; }
+  .ms-scroll { overflow-x: visible; }
+  .ms-table { width: 100%; }
   /* Contract milestone table */
   .ctr-table { width: 100%; border-collapse: collapse; }
   .ctr-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 2px 6px; border-bottom: 1px solid var(--border); text-align: left; }
@@ -180,6 +196,26 @@
 </style>
 </head>
 <body>
+
+<div class="fmt-toolbar" id="fmt-toolbar">
+  <button class="fmt-btn" onclick="document.execCommand('bold')" title="Bold"><b>B</b></button>
+  <button class="fmt-btn" onclick="document.execCommand('italic')" title="Italic"><i>I</i></button>
+  <button class="fmt-btn" onclick="document.execCommand('underline')" title="Underline"><u>U</u></button>
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onclick="document.execCommand('foreColor',false,'#e74c3c')" title="Red text" style="color:#e74c3c">A</button>
+  <button class="fmt-btn" onclick="document.execCommand('foreColor',false,'#f1c40f')" title="Yellow text" style="color:#f1c40f">A</button>
+  <button class="fmt-btn" onclick="document.execCommand('foreColor',false,'#27ae60')" title="Green text" style="color:#27ae60">A</button>
+  <button class="fmt-btn" onclick="document.execCommand('foreColor',false,'#e0e0e0')" title="Reset color">A</button>
+  <div class="fmt-sep"></div>
+  <select class="fmt-size" onchange="document.execCommand('fontSize',false,this.value);this.value=''">
+    <option value="">Size</option>
+    <option value="1">XS</option>
+    <option value="2">S</option>
+    <option value="3">M</option>
+    <option value="4">L</option>
+    <option value="5">XL</option>
+  </select>
+</div>
 
 <div class="db-header">
   <h1>📋 Project Operations Dashboard</h1>
@@ -544,8 +580,10 @@ function renderBox(boxId){
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
             <span style="flex:1" contenteditable="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
-            <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="add-task">＋ task</span>
             <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
+          </div>
+          <div style="padding-left:20px;margin-bottom:2px">
+            <span class="add-task-btn add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}">＋ task</span>
           </div>`;
 
         if(sub.open){
@@ -557,6 +595,7 @@ function renderBox(boxId){
             const taskBg=isHighPriority?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':'';
             const isChecked=task.checked||false;
             html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}${isChecked?' checked':''}" style="${taskBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
+              <span class="drag-handle" draggable="false">⠿</span>
               <input type="checkbox" class="task-cb" ${isChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
               ${priorityDot(task.priority)}
               ${flagHtml}
@@ -632,16 +671,28 @@ function bindBox(boxId){
   });
 
   el.querySelectorAll('.task-text').forEach(s=>{
+    // Intercept paste to handle URLs properly
+    s.addEventListener('paste',e=>{
+      e.preventDefault();
+      const pasted=(e.clipboardData||window.clipboardData).getData('text').trim();
+      if(isURL(pasted)){
+        // Show label prompt then store as link
+        const label=prompt('Link label (or press Enter for URL as label):','');
+        const d=loadD();const{pi,si,ti}=s.dataset;
+        const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+        if(!task.links)task.links=[];
+        task.links.push({url:pasted,label:label||pasted.slice(0,50)});
+        saveD(d);renderBox(boxId);
+      } else {
+        // Plain text paste
+        document.execCommand('insertText',false,pasted);
+      }
+    });
     s.addEventListener('blur',()=>{
       const d=loadD();const{pi,si,ti}=s.dataset;
       const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
-      const txt=s.textContent.trim();
-      if(isURL(txt)){
-        if(!task.links)task.links=[];
-        task.links.push({url:txt,label:txt.slice(0,50)});
-        task.text='(link)';
-      } else { task.text=txt; }
-      saveD(d);renderBox(boxId);
+      task.text=s.textContent.trim();
+      saveD(d);
     });
     s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
   });
@@ -784,6 +835,39 @@ function bindBox(boxId){
     });
   });
 
+  // ── Drag and drop tasks ──
+  let dragSrc=null;
+  el.querySelectorAll('.h-task').forEach(row=>{
+    row.setAttribute('draggable','true');
+    row.addEventListener('dragstart',e=>{
+      dragSrc=row;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain',JSON.stringify({pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti}));
+    });
+    row.addEventListener('dragend',()=>{
+      row.classList.remove('dragging');
+      el.querySelectorAll('.drag-over').forEach(r=>r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover',e=>{
+      e.preventDefault();e.dataTransfer.dropEffect='move';
+      el.querySelectorAll('.drag-over').forEach(r=>r.classList.remove('drag-over'));
+      if(row!==dragSrc)row.classList.add('drag-over');
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!dragSrc||dragSrc===row)return;
+      const src=JSON.parse(e.dataTransfer.getData('text/plain'));
+      const dst={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti};
+      if(src.pi!==dst.pi||src.si!==dst.si)return; // only reorder within same subgroup
+      const d=loadD();
+      const tasks=d[boxId].parents[parseInt(src.pi)].subs[parseInt(src.si)].tasks;
+      const [moved]=tasks.splice(parseInt(src.ti),1);
+      tasks.splice(parseInt(dst.ti),0,moved);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
   // Subgroup right-click for priority
   el.querySelectorAll('.h-sub-label').forEach(lbl=>{
     lbl.addEventListener('contextmenu',e=>{
@@ -824,8 +908,30 @@ function bindBox(boxId){
       else if(action==='add-sub'){d[boxId].parents[parseInt(pi)].subs.push({id:uid(),label:'New Subgroup',color:'#888',open:true,tasks:[]})}
       else if(action==='del-parent'){d[boxId].parents.splice(parseInt(pi),1)}
       else if(action==='del-sub'){d[boxId].parents[parseInt(pi)].subs.splice(parseInt(si),1)}
-      else if(action==='add-task'){d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.push({id:uid(),text:'New item',star:false,priority:'none',created:Date.now(),links:[]})}
+      else if(action==='add-task'){
+        d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.push({id:uid(),text:'New item',star:false,priority:'none',created:Date.now(),links:[]});
+      }
       saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Dedicated add-task button handler (outside sub-label to avoid click conflicts)
+  el.querySelectorAll('.add-task-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();e.preventDefault();
+      const d=loadD();const{pi,si}=btn.dataset;
+      if(!d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks){
+        d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks=[];
+      }
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.push({
+        id:uid(),text:'New item',star:false,priority:'none',created:Date.now(),links:[],subtasks:[]
+      });
+      saveD(d);renderBox(boxId);
+      // Auto-focus the new task text
+      setTimeout(()=>{
+        const tasks=el.querySelectorAll(`.h-sub-body .task-text`);
+        if(tasks.length>0){const last=tasks[tasks.length-1];last.focus();document.execCommand('selectAll',false,null);}
+      },50);
     });
   });
 }
@@ -1296,6 +1402,26 @@ function renderAll() {
     else renderMS(id,msData[id],msData);
   });
 }
+
+// ── Floating format toolbar ──
+document.addEventListener('selectionchange',()=>{
+  const sel=window.getSelection();
+  const toolbar=document.getElementById('fmt-toolbar');
+  if(!toolbar)return;
+  if(sel&&sel.toString().length>0){
+    // Check if selection is inside a contenteditable task/sub text
+    const anchor=sel.anchorNode?.parentElement;
+    if(anchor&&(anchor.closest('.task-text')||anchor.closest('.subtask-text')||anchor.closest('.sub-name')||anchor.closest('.parent-name'))){
+      const range=sel.getRangeAt(0);
+      const rect=range.getBoundingClientRect();
+      toolbar.style.left=(rect.left+rect.width/2-80)+'px';
+      toolbar.style.top=(rect.top-36+window.scrollY)+'px';
+      toolbar.classList.add('visible');
+      return;
+    }
+  }
+  toolbar.classList.remove('visible');
+});
 
 // Refresh countdowns every 60 seconds
 setInterval(()=>{
