@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!-- Dashboard v2026-03-16 18:32 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -1448,7 +1448,12 @@ function renderMS(id,rows,data){
     const startedCell = startCd;
 
     html+=`<tr>
-      <td><div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}">${row.name}</div></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px">
+          <div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1">${row.name}</div>
+          <span class="del-ms-row" data-id="${id}" data-idx="${i}" style="font-size:10px;color:#666;cursor:pointer;flex-shrink:0;padding:0 3px;opacity:0.4" title="Delete milestone">✕</span>
+        </div>
+      </td>
       <td>
         <div class="pct-wrap">
           <input type="number" class="ms-input" value="${pct}" min="0" max="100" data-id="${id}" data-idx="${i}" data-field="pct" style="width:32px"/>
@@ -1496,6 +1501,11 @@ function renderMS(id,rows,data){
   html+=`<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
     <span class="add-row" data-id="${id}" data-section="${Object.keys(sections)[0]||'General'}">+ Add milestone</span>
     <span class="add-ms-section" data-id="${id}" style="font-size:10px;color:var(--text3);cursor:pointer;padding:3px 4px">+ Add section</span>
+    <span class="ms-new-sec-wrap" data-id="${id}" style="display:none;align-items:center;gap:4px">
+      <input class="ms-input ms-new-sec-input" data-id="${id}" placeholder="Section name" style="width:100px;font-size:10px" />
+      <span class="ms-new-sec-ok" data-id="${id}" style="font-size:10px;color:#27ae60;cursor:pointer;padding:1px 6px;border:1px solid #27ae6044;border-radius:3px">✓ Add</span>
+      <span class="ms-new-sec-cancel" style="font-size:10px;color:#666;cursor:pointer">✕</span>
+    </span>
   </div></div>`;
   el.innerHTML=html;
 
@@ -1576,6 +1586,18 @@ function renderMS(id,rows,data){
     });
   });
 
+  el.querySelectorAll('.del-ms-row').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(!confirm('Delete this milestone?'))return;
+      const d=loadMS();
+      d[btn.dataset.id].splice(parseInt(btn.dataset.idx),1);
+      saveMS(d);renderMS(id,d[id],d);
+    });
+    btn.addEventListener('mouseover',()=>btn.style.opacity='1');
+    btn.addEventListener('mouseout',()=>btn.style.opacity='0.4');
+  });
+
   el.querySelectorAll('.add-row, .add-ms-row').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
@@ -1589,18 +1611,51 @@ function renderMS(id,rows,data){
   el.querySelectorAll('.add-ms-section').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
-      const secName=prompt('Section name (e.g. PV, BESS, Substation):','');
+      // Show inline input instead of prompt (prompt blocked in iframes)
+      btn.style.display='none';
+      const wrap=el.querySelector('.ms-new-sec-wrap[data-id="'+btn.dataset.id+'"]');
+      if(wrap){wrap.style.display='flex';wrap.querySelector('.ms-new-sec-input').focus();}
+    });
+  });
+
+  el.querySelectorAll('.ms-new-sec-ok').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const wrap=btn.closest('.ms-new-sec-wrap');
+      const input=wrap.querySelector('.ms-new-sec-input');
+      const secName=input.value.trim();
       if(!secName)return;
       const d=loadMS();
-      d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false,section:secName.trim()});
+      d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false,section:secName});
       saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.ms-new-sec-input').forEach(inp=>{
+    inp.addEventListener('keydown',e=>{
+      if(e.key==='Enter'){e.preventDefault();inp.closest('.ms-new-sec-wrap').querySelector('.ms-new-sec-ok').click();}
+      if(e.key==='Escape'){e.preventDefault();inp.closest('.ms-new-sec-wrap').querySelector('.ms-new-sec-cancel').click();}
+    });
+    inp.addEventListener('click',e=>e.stopPropagation());
+  });
+
+  el.querySelectorAll('.ms-new-sec-cancel').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const wrap=btn.closest('.ms-new-sec-wrap');
+      wrap.style.display='none';
+      wrap.querySelector('.ms-new-sec-input').value='';
+      const addBtn=el.querySelector('.add-ms-section[data-id="'+wrap.dataset.id+'"]');
+      if(addBtn)addBtn.style.display='';
     });
   });
 
   el.querySelectorAll('.del-ms-section').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
-      if(!confirm('Delete all milestones in "'+btn.dataset.section+'" section?'))return;
+      // Use window.confirm — works in most browsers including WebViewer
+      const ok=window.confirm('Delete all milestones in the "'+btn.dataset.section+'" section? This cannot be undone.');
+      if(!ok)return;
       const d=loadMS();
       d[btn.dataset.id]=d[btn.dataset.id].filter(r=>r.section!==btn.dataset.section);
       saveMS(d);renderMS(id,d[id],d);
