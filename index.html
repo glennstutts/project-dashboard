@@ -50,8 +50,6 @@
   .h-task.age-yellow { border-left: 2px solid #f1c40f; padding-left: 4px; }
   .h-task.age-red { border-left: 2px solid #e74c3c; padding-left: 4px; }
   .h-task.starred { background: rgba(241,196,15,.08); }
-  .h-task.priority-high { border-left: 2px solid #e74c3c44; }
-  .h-task.priority-high:not(.age-yellow):not(.age-red) { padding-left: 4px; }
   .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
   .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
   .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
@@ -497,10 +495,12 @@ function renderBox(boxId){
           (sub.tasks||[]).forEach((task,ti)=>{
             const ac=ageClass(task.created||Date.now());
             const isHighPriority=task.priority==='high';
-            html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}${isHighPriority?' priority-high':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
+            const flagHtml=isHighPriority?'<span style="color:#e74c3c;font-size:12px;flex-shrink:0;margin-top:1px" title="High priority">🚩</span>':'';
+            const taskBg=isHighPriority?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':'';
+            html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}" style="${taskBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
               <input type="checkbox" class="task-cb" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
               ${priorityDot(task.priority)}
-              <span class="flag-icon" style="display:${isHighPriority?'inline':'none'}" title="High priority">🚩</span>
+              ${flagHtml}
               <div style="flex:1">
                 <div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text||''}</div>
                 ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> `).join('')}
