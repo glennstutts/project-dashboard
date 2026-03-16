@@ -121,6 +121,7 @@
   .ctr-row-complete { opacity: 0.6; }
   .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
   .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
+  .task-text:empty:before { content: attr(placeholder); color: var(--text3); pointer-events: none; font-style: italic; }
   .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
   .task-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
   .h-task:hover .task-actions { display: flex; }
@@ -613,8 +614,8 @@ function renderBox(boxId){
               ${priorityDot(task.priority)}
               ${flagHtml}
               <div style="flex:1">
-                <div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text||''}</div>
-                ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> `).join('')}
+                ${(task.text&&task.text.trim()&&task.text.trim()!=='<br>')?`<div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text}</div>`:`<div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" style="display:${(task.links&&task.links.length)?'none':'block'}" placeholder="New item"></div>`}
+                ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> <span class="link-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-url="${l.url}" style="font-size:9px;color:#666;cursor:pointer;margin-right:4px" title="Remove link">✕</span>`).join('')}
               </div>
               <span class="add-subtask-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add note/subtask">＋ note</span>
               ${ageBadge(task.created||Date.now())}
@@ -699,7 +700,7 @@ function bindBox(boxId){
         if(!task.links)task.links=[];
         task.links.push({url:pasted,label:label||pasted.slice(0,60)});
         // If task text is empty or "New item", clear it so link IS the task visually
-        if(!task.text||task.text==='New item'||task.text.trim()===''||task.text.trim()==='(link)')task.text='';
+        task.text=''; // Clear text so link becomes the task visually
         saveD(d);renderBox(boxId);
       } else {
         document.execCommand('insertText',false,pasted);
@@ -778,6 +779,17 @@ function bindBox(boxId){
       e.stopPropagation();
       const d=loadD();const{pi,si,ti}=btn.dataset;
       d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.splice(parseInt(ti),1);saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Remove individual link from task
+  el.querySelectorAll('.link-del').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,url}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      task.links=(task.links||[]).filter(l=>l.url!==url);
+      saveD(d);renderBox(boxId);
     });
   });
 
