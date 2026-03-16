@@ -49,12 +49,12 @@
   .h-parent-label:hover { background: var(--bg3); }
   .h-chevron { font-size: 9px; transition: transform .15s; display: inline-block; color: var(--text3); }
   .h-chevron.open { transform: rotate(90deg); }
-  .h-parent-body { padding-left: 10px; }
+  .h-parent-body { padding-left: 16px; border-left: 1px solid var(--border); margin-left: 6px; }
   .h-sub { margin: 1px 0; }
   .h-sub-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-size: 13px; font-weight: 600; user-select: none; }
   .h-sub-label:hover { background: var(--bg3); }
   .h-sub-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .h-sub-body { padding-left: 12px; }
+  .h-sub-body { padding-left: 16px; border-left: 1px solid var(--border2); margin-left: 8px; }
   .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; }
   .h-task.dragging { opacity: 0.4; }
   .h-task.drag-over { border-top: 2px solid #2471a3; margin-top: 2px; }
@@ -79,7 +79,7 @@
   .uncheck-btn:hover { color: var(--text); }
 
   /* Subtasks */
-  .h-subtask { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px 2px 14px; border-radius: 3px; position: relative; border-left: 1px dashed var(--border2); margin-left: 6px; }
+  .h-subtask { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px 2px 8px; border-radius: 3px; position: relative; margin-left: 14px; }
   .h-subtask:hover { background: var(--bg3); }
   .h-subtask.age-yellow { border-left: 2px solid #f1c40f; }
   .h-subtask.age-red { border-left: 2px solid #e74c3c; }
@@ -674,7 +674,11 @@ function bindBox(boxId){
 
   el.querySelectorAll('.h-sub-label').forEach(lbl=>{
     lbl.addEventListener('click',e=>{
-      if(e.target.isContentEditable||e.target.classList.contains('add-btn'))return;
+      // Don't toggle if clicking checkbox, editable text, or add buttons
+      if(e.target.isContentEditable)return;
+      if(e.target.classList.contains('add-btn'))return;
+      if(e.target.classList.contains('sub-cb'))return;
+      if(e.target.classList.contains('drag-handle'))return;
       const d=loadD();const p=d[boxId].parents[parseInt(lbl.dataset.pi)];
       p.subs[parseInt(lbl.dataset.si)].open=!p.subs[parseInt(lbl.dataset.si)].open;saveD(d);renderBox(boxId);
     });
@@ -1387,9 +1391,11 @@ function renderCTR(id, rows, data){
 function renderMS(id,rows,data){
   const el=document.getElementById(id);if(!el)return;
   // Group rows by section
+  // Ensure all rows have explicit section tag
   const sections={};
   rows.forEach((row,i)=>{
-    const sec=row.section||'General';
+    // Only assign to General if section is truly missing
+    const sec=row.section!==undefined&&row.section!==null&&row.section!==''?row.section:'General';
     if(!sections[sec])sections[sec]=[];
     sections[sec].push({row,i});
   });
@@ -1449,9 +1455,14 @@ function renderMS(id,rows,data){
 
     html+=`<tr>
       <td>
-        <div style="display:flex;align-items:center;gap:4px">
-          <div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1">${row.name}</div>
-          <span class="del-ms-row" data-id="${id}" data-idx="${i}" style="font-size:10px;color:#666;cursor:pointer;flex-shrink:0;padding:0 3px;opacity:0.4" title="Delete milestone">✕</span>
+        <div style="display:flex;align-items:flex-start;gap:4px">
+          <div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1;white-space:normal;word-break:break-word;max-width:140px;line-height:1.3">${row.name}</div>
+          <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
+            <select class="ms-section-sel ms-input" data-id="${id}" data-idx="${i}" style="font-size:9px;padding:1px 2px;max-width:70px" title="Move to section">
+              ${Object.keys(sections).map(s=>`<option value="${s}" ${(row.section||'General')===s?'selected':''}>${s}</option>`).join('')}
+            </select>
+            <span class="del-ms-row" data-id="${id}" data-idx="${i}" style="font-size:9px;color:#666;cursor:pointer;text-align:center;opacity:0.5" title="Delete">✕</span>
+          </div>
         </div>
       </td>
       <td>
@@ -1586,6 +1597,17 @@ function renderMS(id,rows,data){
     });
   });
 
+  // Move milestone between sections
+  el.querySelectorAll('.ms-section-sel').forEach(sel=>{
+    sel.addEventListener('change',e=>{
+      e.stopPropagation();
+      const d=loadMS();
+      d[sel.dataset.id][parseInt(sel.dataset.idx)].section=sel.value;
+      saveMS(d);renderMS(sel.dataset.id,d[sel.dataset.id],d);
+    });
+    sel.addEventListener('click',e=>e.stopPropagation());
+  });
+
   el.querySelectorAll('.del-ms-row').forEach(btn=>{
     btn.addEventListener('click',e=>{
       e.stopPropagation();
@@ -1626,6 +1648,9 @@ function renderMS(id,rows,data){
       const secName=input.value.trim();
       if(!secName)return;
       const d=loadMS();
+      // First make sure all existing items without explicit section get tagged 'General'
+      d[btn.dataset.id]=d[btn.dataset.id].map(r=>({...r,section:r.section||'General'}));
+      // Add new blank milestone in the new section
       d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false,section:secName});
       saveMS(d);renderMS(id,d[id],d);
     });
@@ -1676,14 +1701,31 @@ function renderMS(id,rows,data){
     span.addEventListener('blur',()=>{
       const newName=span.textContent.trim();
       const oldName=span.dataset.section;
-      if(!newName||newName===oldName)return;
+      if(!newName)return;
+      if(newName===oldName)return;
+      // Update all rows in this box that have the old section name
       const d=loadMS();
-      // Rename all rows with old section name to new name
-      d[span.dataset.id]=d[span.dataset.id].map(row=>({
-        ...row,
-        section:row.section===oldName?newName:row.section
-      }));
-      saveMS(d);renderMS(span.dataset.id,d[span.dataset.id],d);
+      const boxId=span.dataset.id;
+      if(!d[boxId])return;
+      let changed=false;
+      d[boxId]=d[boxId].map(row=>{
+        if((row.section||'General')===oldName){
+          changed=true;
+          return{...row,section:newName};
+        }
+        return row;
+      });
+      if(changed){
+        // Update section state key too
+        const oldKey=boxId+'_sec_'+oldName;
+        const newKey=boxId+'_sec_'+newName;
+        if(_sectionState[oldKey]!==undefined){
+          _sectionState[newKey]=_sectionState[oldKey];
+          delete _sectionState[oldKey];
+        }
+        saveMS(d);
+        renderMS(boxId,d[boxId],d);
+      }
     });
     span.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();span.blur();}});
     span.addEventListener('click',e=>e.stopPropagation());
@@ -1744,13 +1786,15 @@ document.addEventListener('selectionchange',()=>{
     if(anchor&&(anchor.closest('.task-text')||anchor.closest('.subtask-text')||anchor.closest('.sub-name')||anchor.closest('.parent-name'))){
       const range=sel.getRangeAt(0);
       const rect=range.getBoundingClientRect();
-      const tbW=170, tbH=36;
-      // Prefer above selection, fall back to below if too close to top
-      let top=rect.top+window.scrollY-tbH-6;
-      if(top<window.scrollY+4) top=rect.bottom+window.scrollY+6;
-      // Keep within horizontal bounds
+      const tbW=180, tbH=36;
+      // Use viewport-relative positioning (fixed toolbar)
+      // Prefer above selection
+      let top=rect.top-tbH-8;
+      if(top<4) top=rect.bottom+6; // fall below if too close to top
+      top=Math.max(4,Math.min(top,window.innerHeight-tbH-4));
       let left=rect.left+rect.width/2-tbW/2;
-      left=Math.max(8,Math.min(left,window.innerWidth-tbW-8));
+      left=Math.max(4,Math.min(left,window.innerWidth-tbW-4));
+      toolbar.style.position='fixed';
       toolbar.style.left=left+'px';
       toolbar.style.top=top+'px';
       toolbar.classList.add('visible');
