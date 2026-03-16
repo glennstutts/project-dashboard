@@ -594,6 +594,7 @@ function renderBox(boxId){
           <div class="h-sub-label ${finalSubClass}" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
             <span class="drag-handle sub-drag-handle" data-box="${boxId}" data-pi="${pi}" data-si="${si}">⠿</span>
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
+            <input type="checkbox" class="sub-cb" ${sub.checked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" style="width:12px;height:12px;flex-shrink:0;accent-color:#27ae60;cursor:pointer;margin-right:2px"/>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
             <span style="flex:1" contenteditable="true" spellcheck="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
             <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
@@ -614,7 +615,7 @@ function renderBox(boxId){
               ${priorityDot(task.priority)}
               ${flagHtml}
               <div style="flex:1">
-                ${(task.text&&task.text.trim()&&task.text.trim()!=='<br>')?`<div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text}</div>`:`<div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" style="display:${(task.links&&task.links.length)?'none':'block'}" placeholder="New item"></div>`}
+                ${(task.text&&task.text.trim()&&task.text.trim()!=='<br>')?`<div class="task-text" contenteditable="true" spellcheck="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text}</div>`:`<div class="task-text" contenteditable="true" spellcheck="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" style="display:${(task.links&&task.links.length)?'none':'block'}" placeholder="New item"></div>`}
                 ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> <span class="link-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-url="${l.url}" style="font-size:9px;color:#666;cursor:pointer;margin-right:4px" title="Remove link">✕</span>`).join('')}
               </div>
               <span class="add-subtask-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add note/subtask">＋ note</span>
