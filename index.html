@@ -224,6 +224,7 @@
   <h1>📋 Project Operations Dashboard</h1>
   <div style="display:flex;align-items:center;gap:16px">
     <span id="sync-status" style="font-size:10px;font-family:monospace;color:#27ae60">↻ Loading...</span>
+    <button onclick="downloadBackup()" style="font-size:9px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer" title="Download a backup of all your data">💾 Backup</button>
     <span class="db-date" id="db-date"></span>
   </div>
 </div>
@@ -282,6 +283,8 @@ const JSONBIN_URL = `https://api.jsonbin.io/v3/b/${JSONBIN_ID}`;
 let _cache = null;
 let _saveTimer = null;
 let _syncStatus = 'idle';
+let _isDirty = false;      // true = local has unsaved changes
+let _lastSaveTime = 0;     // timestamp of last successful save to JSONBin
 
 function countData(d) {
   if (!d) return 0;
@@ -302,13 +305,16 @@ async function fetchBin() {
     const localCount = countData(_cache);
     // Only overwrite local with remote if remote has MORE data
     // This prevents a blank JSONBin from wiping local edits
-    if (remoteCount >= localCount) {
+    if (_isDirty) {
+      // Never overwrite local unsaved changes with remote data
+      console.log('Skipping remote load — local has unsaved changes, pushing to remote instead');
+      if (_cache) saveBin(_cache);
+    } else if (remoteCount >= localCount) {
       _cache = remote;
       setLocalFallback(_cache);
       console.log('Loaded from JSONBin:', remoteCount, 'items');
     } else {
       console.log('Kept local data (more items than remote):', localCount, 'vs', remoteCount);
-      // Push local data up to JSONBin to fix the mismatch
       if (_cache) saveBin(_cache);
     }
     return _cache;
@@ -348,8 +354,9 @@ function setSyncStatus(status) {
     idle: { text: '● Synced', color: '#27ae60' },
     saving: { text: '↻ Saving...', color: '#d4ac0d' },
     saved: { text: '✓ Saved', color: '#27ae60' },
-    offline: { text: '⚠ Offline — saved locally', color: '#e67e22' },
-    loading: { text: '↻ Loading...', color: '#d4ac0d' }
+    offline: { text: '⚠ Save failed — check connection', color: '#e74c3c' },
+    loading: { text: '↻ Loading...', color: '#d4ac0d' },
+    dirty: { text: '● Unsaved changes', color: '#e67e22' }
   };
   const s = states[status] || states.idle;
   el.textContent = s.text;
@@ -368,13 +375,15 @@ function setLocalFallback(d) {
 
 // Debounced save — batches rapid edits into one save
 function scheduleSave() {
+  _isDirty = true; // Mark dirty immediately so resyncs don't overwrite
+  setLocalFallback(_cache); // Save to localStorage instantly as backup
   if (_saveTimer) clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     if (_cache) {
       saveBin(_cache);
       _saveTimer = null;
     }
-  }, 800);
+  }, 300); // 300ms — fast enough to catch rapid edits
 }
 
 // Wrapper functions matching original API
@@ -1547,6 +1556,27 @@ function renderAll() {
   });
 }
 
+// ── Manual backup download ──
+function downloadBackup() {
+  const data = JSON.stringify(_cache, null, 2);
+  const blob = new Blob([data], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dashboard-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Warn before leaving with unsaved changes ──
+window.addEventListener('beforeunload', e => {
+  if (_isDirty || _saveTimer) {
+    e.preventDefault();
+    e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    return e.returnValue;
+  }
+});
+
 // ── Floating format toolbar ──
 document.addEventListener('selectionchange',()=>{
   const sel=window.getSelection();
@@ -1620,12 +1650,12 @@ setInterval(()=>{
   document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 },60000);
 
-// Re-sync from JSONBin every 5 minutes — only if no pending save
+// Re-sync from JSONBin every 5 minutes — only if clean and not recently saved
 setInterval(async ()=>{
-  if (_saveTimer) {
-    console.log('Skipping re-sync — save pending');
-    return;
-  }
+  if (_saveTimer) { console.log('Skipping re-sync — save timer pending'); return; }
+  if (_isDirty)   { console.log('Skipping re-sync — dirty flag set'); saveBin(_cache); return; }
+  if (Date.now() - _lastSaveTime < 30000) { console.log('Skipping re-sync — saved recently'); return; }
+  console.log('Re-syncing from JSONBin...');
   await fetchBin();
   renderAll();
 }, 300000);
