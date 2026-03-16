@@ -45,13 +45,13 @@
 
   /* Hierarchy */
   .h-parent { margin: 3px 0 1px; }
-  .h-parent-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-weight: 700; font-size: 11px; user-select: none; }
+  .h-parent-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 3px 4px; border-radius: 3px; font-weight: 700; font-size: 15px; user-select: none; }
   .h-parent-label:hover { background: var(--bg3); }
   .h-chevron { font-size: 9px; transition: transform .15s; display: inline-block; color: var(--text3); }
   .h-chevron.open { transform: rotate(90deg); }
   .h-parent-body { padding-left: 10px; }
   .h-sub { margin: 1px 0; }
-  .h-sub-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-size: 11px; font-weight: 600; user-select: none; }
+  .h-sub-label { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 3px; border-radius: 3px; font-size: 13px; font-weight: 600; user-select: none; }
   .h-sub-label:hover { background: var(--bg3); }
   .h-sub-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .h-sub-body { padding-left: 12px; }
@@ -86,7 +86,7 @@
   .subtask-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
   .h-subtask:hover .subtask-actions { display: flex; }
   .subtask-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 11px; height: 11px; accent-color: #27ae60; }
-  .subtask-text { font-size: 10px; line-height: 1.4; flex: 1; outline: none; color: var(--text2); background: transparent; }
+  .subtask-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text2); background: transparent; }
   .subtask-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
   .add-subtask-btn { font-size: 9px; color: var(--text3); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
   .add-subtask-btn:hover { color: var(--text); background: var(--bg3); }
@@ -120,7 +120,7 @@
   .ctr-row-delayed { background: rgba(231,76,60,0.05); }
   .ctr-row-complete { opacity: 0.6; }
   .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
-  .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
+  .task-text { font-size: 12px; line-height: 1.5; flex: 1; outline: none; color: var(--text); background: transparent; }
   .task-text:empty:before { content: attr(placeholder); color: var(--text3); pointer-events: none; font-style: italic; }
   .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
   .task-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
@@ -574,7 +574,7 @@ function renderBox(boxId){
       <div class="h-parent-label" data-box="${boxId}" data-pi="${pi}">
         <span class="drag-handle parent-drag-handle" data-box="${boxId}" data-pi="${pi}">⠿</span>
         <span class="h-chevron ${parent.open?'open':''}">▶</span>
-        <span style="flex:1" contenteditable="true" class="parent-name" data-box="${boxId}" data-pi="${pi}">${parent.label}</span>
+        <span style="flex:1" contenteditable="true" spellcheck="true" class="parent-name" data-box="${boxId}" data-pi="${pi}">${parent.label}</span>
         <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="add-sub">＋ group</span>
         <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="del-parent" style="color:#e74c3c">✕</span>
       </div>`;
@@ -595,7 +595,7 @@ function renderBox(boxId){
             <span class="drag-handle sub-drag-handle" data-box="${boxId}" data-pi="${pi}" data-si="${si}">⠿</span>
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
-            <span style="flex:1" contenteditable="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
+            <span style="flex:1" contenteditable="true" spellcheck="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
             <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
           </div>
 `;
@@ -628,9 +628,12 @@ function renderBox(boxId){
             (task.subtasks||[]).forEach((st,sti)=>{
               const stAc=ageClass(st.created||Date.now());
               const stChecked=st.checked||false;
-              html+=`<div class="h-subtask${stAc?' age-'+stAc:''}${stChecked?' checked':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">
+              const stPriority=st.priority||'none';
+              const stBg=stPriority==='high'?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':stPriority==='med'?'background:rgba(241,196,15,0.06);border-left:2px solid #f1c40f;padding-left:4px;':stPriority==='low'?'background:rgba(39,174,96,0.06);border-left:2px solid #27ae60;padding-left:4px;':'';
+              html+=`<div class="h-subtask${stAc?' age-'+stAc:''}${stChecked?' checked':''}" style="${stBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">
                 <input type="checkbox" class="subtask-cb" ${stChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}"/>
-                <div class="subtask-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">${st.text||''}</div>
+                ${priorityDot(stPriority)}
+                <div class="subtask-text" contenteditable="true" spellcheck="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">${st.text||''}</div>
                 ${ageBadge(st.created||Date.now())}
                 <div class="subtask-actions">
                   ${stChecked?`<span class="send-subtask-complete" style="font-size:9px;color:#27ae60;cursor:pointer;padding:1px 4px;border:1px solid #27ae6044;border-radius:3px" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">→ done</span>`:''}
@@ -864,6 +867,49 @@ function bindBox(boxId){
     });
   });
 
+  // Subtask right-click priority + drag reorder
+  el.querySelectorAll('.h-subtask').forEach(row=>{
+    // Right-click for priority
+    row.addEventListener('contextmenu',e=>{
+      if(e.target.classList.contains('subtask-del')||e.target.classList.contains('subtask-cb'))return;
+      e.preventDefault();
+      const{pi,si,ti,sti}=row.dataset;
+      showCtx(e.clientX,e.clientY,[
+        {label:'🔴 High priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'high')},
+        {label:'🟡 Medium priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'med')},
+        {label:'🟢 Low priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'low')},
+        {label:'⬜ No priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'none')},
+      ]);
+    });
+    // Drag to reorder
+    row.setAttribute('draggable','true');
+    row.addEventListener('dragstart',e=>{
+      dragType='subtask';
+      dragData={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti,sti:row.dataset.sti};
+      row.style.opacity='0.4';e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{row.style.opacity='';clearDragStyles();});
+    row.addEventListener('dragover',e=>{
+      if(dragType!=='subtask')return;
+      e.preventDefault();
+      if(row.dataset.ti===dragData.ti&&row.dataset.sti!==dragData.sti){
+        el.querySelectorAll('.h-subtask').forEach(r=>r.style.borderTop='');
+        row.style.borderTop='2px solid #2471a3';
+      }
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(dragType!=='subtask'||!dragData)return;
+      const{pi,si,ti,sti}=row.dataset;
+      if(ti!==dragData.ti||sti===dragData.sti)return;
+      const d=loadD();
+      const subtasks=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks;
+      const[moved]=subtasks.splice(parseInt(dragData.sti),1);
+      subtasks.splice(parseInt(sti),0,moved);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
   // ── Drag and drop — tasks, subs, parents ──
   let dragType=null, dragData=null;
 
@@ -969,6 +1015,16 @@ function bindBox(boxId){
     });
   });
 
+  // Subgroup checkbox
+  el.querySelectorAll('.sub-cb').forEach(cb=>{
+    cb.addEventListener('change',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si}=cb.dataset;
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].checked=cb.checked;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
   // Subgroup right-click for priority
   el.querySelectorAll('.h-sub-label').forEach(lbl=>{
     lbl.addEventListener('contextmenu',e=>{
@@ -1005,14 +1061,24 @@ function bindBox(boxId){
     btn.addEventListener('click',e=>{
       e.stopPropagation();
       const d=loadD();const{pi,si,action}=btn.dataset;
-      if(action==='add-parent'){d[boxId].parents.push({id:uid(),label:'New Group',open:true,color:'#888',subs:[]})}
-      else if(action==='add-sub'){d[boxId].parents[parseInt(pi)].subs.push({id:uid(),label:'New Subgroup',color:'#888',open:true,tasks:[]})}
+      if(action==='add-parent'){d[boxId].parents.push({id:uid(),label:'',open:true,color:'#888',subs:[]})}
+      else if(action==='add-sub'){d[boxId].parents[parseInt(pi)].subs.push({id:uid(),label:'',color:'#888',open:true,tasks:[]})}
       else if(action==='del-parent'){d[boxId].parents.splice(parseInt(pi),1)}
       else if(action==='del-sub'){d[boxId].parents[parseInt(pi)].subs.splice(parseInt(si),1)}
       else if(action==='add-task'){
         d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.push({id:uid(),text:'New item',star:false,priority:'none',created:Date.now(),links:[]});
       }
       saveD(d);renderBox(boxId);
+      // Auto-focus the newly created item
+      setTimeout(()=>{
+        if(action==='add-parent'){
+          const names=el.querySelectorAll('.parent-name');
+          if(names.length){const last=names[names.length-1];last.focus();document.execCommand('selectAll',false,null);}
+        } else if(action==='add-sub'){
+          const names=el.querySelectorAll('.sub-name');
+          if(names.length){const last=names[names.length-1];last.focus();document.execCommand('selectAll',false,null);}
+        }
+      },50);
     });
   });
 
@@ -1042,6 +1108,11 @@ function setPriority(boxId,pi,si,ti,p){
 }
 function setSubPriority(boxId,pi,si,p){
   const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].priority=p;saveD(d);renderBox(boxId);
+}
+function setSubtaskPriority(boxId,pi,si,ti,sti,p){
+  const d=loadD();
+  const st=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)];
+  st.priority=p;saveD(d);renderBox(boxId);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1330,7 +1401,7 @@ function renderMS(id,rows,data){
     html+=`<div class="ms-section">
       <div class="ms-section-header" data-sec="${secKey}" style="display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;background:var(--bg3);border-radius:4px;margin-bottom:2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">
         <span class="h-chevron ${secOpen?'open':''}"  style="font-size:8px">▶</span>
-        ${secName}
+        <span class="ms-sec-name" contenteditable="true" data-id="${id}" data-section="${secName}" style="outline:none;min-width:20px">${secName}</span>
         <span style="font-size:9px;font-weight:400;opacity:.6">(${secRows.length})</span>
         <span class="add-ms-row" data-id="${id}" data-section="${secName}" style="margin-left:auto;font-size:9px;color:var(--text3);cursor:pointer">+ add</span>
         ${Object.keys(sections).length>1?`<span class="del-ms-section" data-id="${id}" data-section="${secName}" style="font-size:9px;color:#e74c3c;cursor:pointer">✕ section</span>`:''}
@@ -1537,11 +1608,29 @@ function renderMS(id,rows,data){
 
   el.querySelectorAll('.ms-section-header').forEach(hdr=>{
     hdr.addEventListener('click',e=>{
-      if(e.target.classList.contains('add-ms-row')||e.target.classList.contains('del-ms-section'))return;
+      if(e.target.classList.contains('add-ms-row')||e.target.classList.contains('del-ms-section')||e.target.classList.contains('ms-sec-name'))return;
       const key=hdr.dataset.sec;
       _sectionState[key]=_sectionState[key]===false?true:false;
       renderMS(id,loadMS()[id],loadMS());
     });
+  });
+
+  // Editable section names
+  el.querySelectorAll('.ms-sec-name').forEach(span=>{
+    span.addEventListener('blur',()=>{
+      const newName=span.textContent.trim();
+      const oldName=span.dataset.section;
+      if(!newName||newName===oldName)return;
+      const d=loadMS();
+      // Rename all rows with old section name to new name
+      d[span.dataset.id]=d[span.dataset.id].map(row=>({
+        ...row,
+        section:row.section===oldName?newName:row.section
+      }));
+      saveMS(d);renderMS(span.dataset.id,d[span.dataset.id],d);
+    });
+    span.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();span.blur();}});
+    span.addEventListener('click',e=>e.stopPropagation());
   });
 }
 
@@ -1595,13 +1684,19 @@ document.addEventListener('selectionchange',()=>{
   const toolbar=document.getElementById('fmt-toolbar');
   if(!toolbar)return;
   if(sel&&sel.toString().length>0){
-    // Check if selection is inside a contenteditable task/sub text
     const anchor=sel.anchorNode?.parentElement;
     if(anchor&&(anchor.closest('.task-text')||anchor.closest('.subtask-text')||anchor.closest('.sub-name')||anchor.closest('.parent-name'))){
       const range=sel.getRangeAt(0);
       const rect=range.getBoundingClientRect();
-      toolbar.style.left=(rect.left+rect.width/2-80)+'px';
-      toolbar.style.top=(rect.top-36+window.scrollY)+'px';
+      const tbW=170, tbH=36;
+      // Prefer above selection, fall back to below if too close to top
+      let top=rect.top+window.scrollY-tbH-6;
+      if(top<window.scrollY+4) top=rect.bottom+window.scrollY+6;
+      // Keep within horizontal bounds
+      let left=rect.left+rect.width/2-tbW/2;
+      left=Math.max(8,Math.min(left,window.innerWidth-tbW-8));
+      toolbar.style.left=left+'px';
+      toolbar.style.top=top+'px';
       toolbar.classList.add('visible');
       return;
     }
