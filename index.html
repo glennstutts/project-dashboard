@@ -50,6 +50,36 @@
   .h-task.age-yellow { border-left: 2px solid #f1c40f; padding-left: 4px; }
   .h-task.age-red { border-left: 2px solid #e74c3c; padding-left: 4px; }
   .h-task.starred { background: rgba(241,196,15,.08); }
+  .h-task.checked .task-text { text-decoration: line-through; opacity: 0.45; }
+  .h-task.checked .priority-dot { opacity: 0.3; }
+  .h-task.checked .flag-icon { opacity: 0.3; }
+  .h-subtask.checked .subtask-text { text-decoration: line-through; opacity: 0.45; }
+  .send-complete-btn { font-size: 9px; color: #27ae60; cursor: pointer; padding: 1px 5px; border: 1px solid #27ae6044; border-radius: 3px; white-space: nowrap; }
+  .send-complete-btn:hover { background: #27ae6022; }
+  .uncheck-btn { font-size: 9px; color: var(--text3); cursor: pointer; padding: 1px 4px; }
+  .uncheck-btn:hover { color: var(--text); }
+
+  /* Subtasks */
+  .h-subtask { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px 2px 14px; border-radius: 3px; position: relative; border-left: 1px dashed var(--border2); margin-left: 6px; }
+  .h-subtask:hover { background: var(--bg3); }
+  .h-subtask.age-yellow { border-left: 2px solid #f1c40f; }
+  .h-subtask.age-red { border-left: 2px solid #e74c3c; }
+  .subtask-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
+  .h-subtask:hover .subtask-actions { display: flex; }
+  .subtask-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 11px; height: 11px; accent-color: #27ae60; }
+  .subtask-text { font-size: 10px; line-height: 1.4; flex: 1; outline: none; color: var(--text2); background: transparent; }
+  .subtask-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
+  .add-subtask-btn { font-size: 9px; color: var(--text3); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+  .add-subtask-btn:hover { color: var(--text); background: var(--bg3); }
+
+  /* Subgroup priority colors */
+  .h-sub-label.sub-priority-high { background: rgba(231,76,60,0.08); border-left: 2px solid #e74c3c; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-med { background: rgba(241,196,15,0.08); border-left: 2px solid #f1c40f; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-low { background: rgba(39,174,96,0.08); border-left: 2px solid #27ae60; padding-left: 2px; border-radius: 3px; }
+
+  /* Milestone scrollable */
+  .ms-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .ms-table { min-width: 480px; }
   .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
   .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
   .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
@@ -82,7 +112,7 @@
   input[type=date].ms-input { width: 90px; color-scheme: dark; }
   input[type=number].ms-input { width: 38px; text-align: right; }
   .cd { font-size: 10px; font-weight: 700; font-family: monospace; white-space: nowrap; }
-  .cd-overdue{color:#e74c3c}.cd-today{color:#e74c3c}.cd-soon{color:#e67e22}.cd-week{color:#d4ac0d}.cd-ok{color:#27ae60}.cd-none{color:#666}
+  .cd-overdue{color:#e74c3c;font-weight:700}.cd-today{color:#e74c3c;font-weight:700}.cd-soon{color:#e67e22;font-weight:700}.cd-ok{color:#27ae60}.cd-none{color:#666}
   .bar-wrap { width: 100%; height: 3px; background: var(--border); border-radius: 2px; margin-top: 1px; }
   .bar-fill { height: 100%; border-radius: 2px; }
   .pct-wrap { display: flex; align-items: center; gap: 2px; }
@@ -481,8 +511,16 @@ function renderBox(boxId){
     if(parent.open){
       html+=`<div class="h-parent-body">`;
       parent.subs.forEach((sub,si)=>{
-        html+=`<div class="h-sub">
-          <div class="h-sub-label" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
+        // Compute subgroup priority from tasks
+            const subTasks=sub.tasks||[];
+            const subHasRed=subTasks.some(t=>t.priority==='high'||ageDays(t.created||Date.now())>=14||(t.subtasks||[]).some(st=>ageDays(st.created||Date.now())>=14));
+            const subHasYellow=!subHasRed&&(subTasks.some(t=>t.priority==='med'||ageDays(t.created||Date.now())>=7||(t.subtasks||[]).some(st=>ageDays(st.created||Date.now())>=7)));
+            const subPriorityClass=subHasRed?'sub-priority-high':subHasYellow?'sub-priority-med':'';
+            // Manual priority override
+            const subManualClass=sub.priority==='high'?'sub-priority-high':sub.priority==='med'?'sub-priority-med':sub.priority==='low'?'sub-priority-low':'';
+            const finalSubClass=subManualClass||subPriorityClass;
+            html+=`<div class="h-sub">
+          <div class="h-sub-label ${finalSubClass}" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
             <span style="flex:1" contenteditable="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
@@ -497,21 +535,36 @@ function renderBox(boxId){
             const isHighPriority=task.priority==='high';
             const flagHtml=isHighPriority?'<span style="color:#e74c3c;font-size:12px;flex-shrink:0;margin-top:1px" title="High priority">🚩</span>':'';
             const taskBg=isHighPriority?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':'';
-            html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}" style="${taskBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
-              <input type="checkbox" class="task-cb" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
+            const isChecked=task.checked||false;
+            html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}${isChecked?' checked':''}" style="${taskBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
+              <input type="checkbox" class="task-cb" ${isChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
               ${priorityDot(task.priority)}
               ${flagHtml}
               <div style="flex:1">
                 <div class="task-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">${task.text||''}</div>
                 ${(task.links||[]).map(l=>`<a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a> `).join('')}
               </div>
+              <span class="add-subtask-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add note/subtask">＋ note</span>
               ${ageBadge(task.created||Date.now())}
               <div class="task-actions">
-                <span class="task-star${task.star?' on':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Star">⭐</span>
-                <span class="add-link-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add link">🔗</span>
+                ${isChecked?`<span class="send-complete-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Send to completed log">→ done</span><span class="uncheck-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Uncheck">↩</span>`:`<span class="task-star${task.star?' on':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Star">⭐</span><span class="add-link-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Add link">🔗</span>`}
                 <span class="task-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Delete">✕</span>
               </div>
             </div>`;
+            // Render subtasks/notes
+            (task.subtasks||[]).forEach((st,sti)=>{
+              const stAc=ageClass(st.created||Date.now());
+              const stChecked=st.checked||false;
+              html+=`<div class="h-subtask${stAc?' age-'+stAc:''}${stChecked?' checked':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">
+                <input type="checkbox" class="subtask-cb" ${stChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}"/>
+                <div class="subtask-text" contenteditable="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">${st.text||''}</div>
+                ${ageBadge(st.created||Date.now())}
+                <div class="subtask-actions">
+                  ${stChecked?`<span class="send-subtask-complete" style="font-size:9px;color:#27ae60;cursor:pointer;padding:1px 4px;border:1px solid #27ae6044;border-radius:3px" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">→ done</span>`:''}
+                  <span class="subtask-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">✕</span>
+                </div>
+              </div>`;
+            });
           });
           html+=`</div>`;
         }
@@ -575,14 +628,26 @@ function bindBox(boxId){
 
   el.querySelectorAll('.task-cb').forEach(cb=>{
     cb.addEventListener('change',()=>{
-      if(!cb.checked)return;
       const d=loadD();const{pi,si,ti}=cb.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      task.checked=cb.checked;
+      task.checkedAt=cb.checked?Date.now():null;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Send to completed button
+  el.querySelectorAll('.send-complete-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
       const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
       const parent=d[boxId].parents[parseInt(pi)];
       const sub=parent.subs[parseInt(si)];
       const comp=loadC();
       comp.unshift({
         text:task.text,links:task.links||[],
+        subtasks:task.subtasks||[],
         box:BOXES.find(b=>b.id===boxId)?.label||boxId,boxId,
         parent:parent.label,sub:sub.label,subColor:sub.color||'#888',
         priority:task.priority||'none',star:task.star||false,
@@ -593,6 +658,17 @@ function bindBox(boxId){
       saveC(comp);
       d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks.splice(parseInt(ti),1);
       saveD(d);renderBox(boxId);renderCompleted();
+    });
+  });
+
+  // Uncheck button
+  el.querySelectorAll('.uncheck-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      task.checked=false;task.checkedAt=null;
+      saveD(d);renderBox(boxId);
     });
   });
 
@@ -617,15 +693,105 @@ function bindBox(boxId){
     });
   });
 
+  // Add subtask
+  el.querySelectorAll('.add-subtask-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      if(!task.subtasks)task.subtasks=[];
+      task.subtasks.push({id:uid(),text:'New note',created:Date.now()});
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Subtask text edit
+  el.querySelectorAll('.subtask-text').forEach(s=>{
+    s.addEventListener('blur',()=>{
+      const d=loadD();const{pi,si,ti,sti}=s.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      if(task.subtasks&&task.subtasks[parseInt(sti)])task.subtasks[parseInt(sti)].text=s.textContent.trim();
+      saveD(d);
+    });
+    s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
+  });
+
+  // Subtask checkbox — moves to completed with parent
+  el.querySelectorAll('.subtask-cb').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      const d=loadD();const{pi,si,ti,sti}=cb.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      const st=task.subtasks[parseInt(sti)];
+      st.checked=cb.checked;
+      st.checkedAt=cb.checked?Date.now():null;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Subtask send to completed
+  el.querySelectorAll('.send-subtask-complete').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      const sub=d[boxId].parents[parseInt(pi)].subs[parseInt(si)];
+      const parent=d[boxId].parents[parseInt(pi)];
+      const st=task.subtasks[parseInt(sti)];
+      const comp=loadC();
+      comp.unshift({
+        text:st.text,links:[],
+        box:BOXES.find(b=>b.id===boxId)?.label||boxId,boxId,
+        parent:parent.label,sub:sub.label,subColor:sub.color||'#888',
+        parentTask:task.text,
+        priority:'none',star:false,isSubtask:true,
+        createdDaysAgo:ageDays(st.created||Date.now()),
+        completedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+        pi:parseInt(pi),si:parseInt(si),ti:parseInt(ti)
+      });
+      saveC(comp);
+      task.subtasks.splice(parseInt(sti),1);
+      saveD(d);renderBox(boxId);renderCompleted();
+    });
+  });
+
+  // Subtask delete
+  el.querySelectorAll('.subtask-del').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti}=btn.dataset;
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks.splice(parseInt(sti),1);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Subgroup right-click for priority
+  el.querySelectorAll('.h-sub-label').forEach(lbl=>{
+    lbl.addEventListener('contextmenu',e=>{
+      if(e.target.isContentEditable||e.target.classList.contains('add-btn'))return;
+      e.preventDefault();const{pi,si}=lbl.dataset;
+      showCtx(e.clientX,e.clientY,[
+        {label:'🔴 High priority',action:()=>setSubPriority(boxId,pi,si,'high')},
+        {label:'🟡 Medium priority',action:()=>setSubPriority(boxId,pi,si,'med')},
+        {label:'🟢 Low priority',action:()=>setSubPriority(boxId,pi,si,'low')},
+        {label:'⬜ No priority',action:()=>setSubPriority(boxId,pi,si,'none')},
+      ]);
+    });
+  });
+
   el.querySelectorAll('.h-task').forEach(row=>{
     row.addEventListener('contextmenu',e=>{
       e.preventDefault();const{pi,si,ti}=row.dataset;
+      const isTaskChecked=loadD()[boxId]?.parents?.[parseInt(pi)]?.subs?.[parseInt(si)]?.tasks?.[parseInt(ti)]?.checked;
       showCtx(e.clientX,e.clientY,[
         {label:'🔴 High priority',action:()=>setPriority(boxId,pi,si,ti,'high')},
         {label:'🟡 Medium priority',action:()=>setPriority(boxId,pi,si,ti,'med')},
         {label:'🟢 Low priority',action:()=>setPriority(boxId,pi,si,ti,'low')},
         {label:'⬜ No priority',action:()=>setPriority(boxId,pi,si,ti,'none')},
         {label:'🔗 Add link',action:()=>showLinkDialog(boxId,pi,si,ti)},
+        ...(isTaskChecked?[{label:'✅ Send to completed log',action:()=>{
+          const btn=el.querySelector(`.send-complete-btn[data-pi="${pi}"][data-si="${si}"][data-ti="${ti}"]`);
+          if(btn)btn.click();
+        }}]:[]),
       ]);
     });
   });
@@ -646,6 +812,9 @@ function bindBox(boxId){
 
 function setPriority(boxId,pi,si,ti,p){
   const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].priority=p;saveD(d);renderBox(boxId);
+}
+function setSubPriority(boxId,pi,si,p){
+  const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].priority=p;saveD(d);renderBox(boxId);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -726,8 +895,9 @@ function renderCompleted(){
     }
     const ageC=item.createdDaysAgo>=14?'#e74c3c':item.createdDaysAgo>=7?'#d4ac0d':'#27ae60';
     html+=`<tr>
-      <td>${item.star?'⭐ ':''}${item.text||'—'}
+      <td>${item.star?'⭐ ':''}${item.isSubtask?'<span style="font-size:9px;color:#888">↳ note</span> ':''}${item.text||'—'}${item.parentTask?'<div style="font-size:9px;color:#666">on: '+item.parentTask+'</div>':''}
         ${(item.links||[]).map(l=>`<br><a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a>`).join('')}
+        ${(item.subtasks||[]).length?'<div style="font-size:9px;color:#666;margin-top:2px">'+item.subtasks.map(st=>'↳ '+st.text+(st.checked?'  ✓':'')).join('<br>')+'</div>':''}
       </td>
       <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${item.subColor||'#888'};margin-right:4px;vertical-align:middle"></span>${item.sub||'—'}</td>
       <td style="font-size:10px;color:#666">${item.box}</td>
@@ -770,13 +940,15 @@ document.getElementById('completed-toggle').addEventListener('click',()=>{
 // ═══════════════════════════════════════════════════════
 // MILESTONE RENDERER
 // ═══════════════════════════════════════════════════════
-function cdHTML(n){
+function cdHTML(n, label){
+  // n = days remaining (negative = past due)
+  // green until 7 days, red when missed
   if(n===null)return'<span class="cd cd-none">—</span>';
-  if(n<0)return`<span class="cd cd-overdue">${Math.abs(n)}d over</span>`;
-  if(n===0)return'<span class="cd cd-today">TODAY</span>';
-  if(n<=7)return`<span class="cd cd-soon">${n}d</span>`;
-  if(n<=30)return`<span class="cd cd-week">${n}d</span>`;
-  return`<span class="cd cd-ok">${n}d</span>`;
+  const prefix = label||'';
+  if(n<0) return`<span class="cd cd-overdue">${prefix}${Math.abs(n)}d late</span>`;
+  if(n===0) return`<span class="cd cd-today">${prefix}TODAY</span>`;
+  if(n<=7)  return`<span class="cd cd-soon">${prefix}${n}d</span>`;
+  return`<span class="cd cd-ok">${prefix}${n}d</span>`;
 }
 function barC(n){if(n===null||n<0)return'#e74c3c';if(n<=7)return'#e67e22';if(n<=30)return'#d4ac0d';return'#27ae60'}
 function barW(n){if(n===null||n<=0)return 100;return Math.max(4,Math.min(100,(1-n/180)*100))}
@@ -790,33 +962,40 @@ function renderMS(id,rows,data){
   rows.forEach((row,i)=>{
     const n=daysDiff(row.end);const sn=daysDiff(row.start);const pct=row.pct||0;
 
-    let startedCell='';
+    // Start countdown — live until started, frozen after
+    let startCd='';
     if(row.started){
       const diff = row.startDiff !== undefined ? row.startDiff : calcStartDiff(row.start, row.startedOn);
       const cls=startFreezeClass(diff);
       const lbl=startFreezeLabel(diff);
-      startedCell=`<div>
-        <span class="started-badge ${cls}">${lbl}</span>
-        <div style="display:flex;align-items:center;gap:3px;margin-top:2px">
-          <span style="font-size:9px;color:var(--text3)">offset:</span>
-          <input type="number" class="ms-input start-diff-input" 
+      startCd=`<div>
+        <span class="started-badge ${cls}" style="display:block;margin-bottom:2px">${lbl}</span>
+        <div style="display:flex;align-items:center;gap:2px">
+          <input type="number" class="ms-input start-diff-input"
             value="${diff}" min="-999" max="999"
             data-id="${id}" data-idx="${i}"
-            style="width:42px;font-size:9px" title="Days late (negative=early, 0=on time)"/>
+            style="width:38px;font-size:9px" title="Edit days offset"/>
           <span style="font-size:9px;color:var(--text3)">d</span>
         </div>
-        <div style="font-size:9px;color:#888;margin-top:1px;cursor:pointer" 
+        <div style="font-size:9px;color:#888;cursor:pointer;margin-top:1px"
           data-id="${id}" data-idx="${i}" class="unstart-btn">✕ unmark</div>
       </div>`;
     } else {
-      startedCell=`<input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}" title="Mark as started"/>`;
+      // Live start countdown
+      const startLive = cdHTML(sn);
+      startCd=`<div>
+        <div style="margin-bottom:3px">${startLive}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${barW(sn)}%;background:${barC(sn)}"></div></div>
+        <div style="margin-top:3px;display:flex;align-items:center;gap:3px">
+          <input type="checkbox" class="started-cb" data-id="${id}" data-idx="${i}"/>
+          <span style="font-size:9px;color:var(--text3)">started</span>
+        </div>
+      </div>`;
     }
+    const startedCell = startCd;
 
     html+=`<tr>
       <td><div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}">${row.name}</div></td>
-      <td><input type="date" class="ms-input" value="${row.start||''}" data-id="${id}" data-idx="${i}" data-field="start"/></td>
-      <td><input type="date" class="ms-input" value="${row.end||''}" data-id="${id}" data-idx="${i}" data-field="end"/></td>
-      <td><input type="number" class="ms-input" value="${row.dur||''}" min="1" max="9999" data-id="${id}" data-idx="${i}" data-field="dur"/></td>
       <td>
         <div class="pct-wrap">
           <input type="number" class="ms-input" value="${pct}" min="0" max="100" data-id="${id}" data-idx="${i}" data-field="pct" style="width:32px"/>
@@ -826,36 +1005,37 @@ function renderMS(id,rows,data){
       </td>
       <td>${startedCell}</td>
       <td>
-        ${row.ended ? 
+        ${row.ended ?
           `<div>
-            <span class="started-badge ${row.endDiff<=0?'sb-green':row.endDiff<=7?'sb-yellow':row.endDiff<=14?'sb-orange':'sb-red'}">
-              ${row.endDiff<0?Math.abs(row.endDiff)+'d early':row.endDiff===0?'On time':row.endDiff+'d late'}
+            <span class="started-badge ${row.endDiff<=0?'sb-green':row.endDiff<=7?'sb-yellow':row.endDiff<=14?'sb-orange':'sb-red'}" style="display:block;margin-bottom:2px">
+              ${row.endDiff<0?Math.abs(row.endDiff)+'d early ✓':row.endDiff===0?'On time ✓':row.endDiff+'d late'}
             </span>
-            <div style="display:flex;align-items:center;gap:3px;margin-top:2px">
-              <span style="font-size:9px;color:var(--text3)">offset:</span>
+            <div style="display:flex;align-items:center;gap:2px;margin-bottom:2px">
               <input type="number" class="ms-input end-diff-input"
                 value="${row.endDiff||0}" min="-999" max="999"
                 data-id="${id}" data-idx="${i}"
-                style="width:42px;font-size:9px" title="Days late at completion"/>
+                style="width:38px;font-size:9px" title="Edit completion offset"/>
               <span style="font-size:9px;color:var(--text3)">d</span>
             </div>
-            <div style="font-size:9px;color:#888;margin-top:1px;cursor:pointer"
-              data-id="${id}" data-idx="${i}" class="unend-btn">✕ unmark</div>
+            <div style="font-size:9px;color:#888;cursor:pointer" data-id="${id}" data-idx="${i}" class="unend-btn">✕ unmark</div>
           </div>` :
           `<div>
             ${cdHTML(n)}
             <div class="bar-wrap"><div class="bar-fill" style="width:${barW(n)}%;background:${barC(n)}"></div></div>
-            <div style="margin-top:3px">
-              <input type="checkbox" class="end-cb" data-id="${id}" data-idx="${i}" title="Mark as complete/ended"/>
-              <span style="font-size:9px;color:var(--text3);margin-left:3px">Mark ended</span>
+            <div style="margin-top:3px;display:flex;align-items:center;gap:3px">
+              <input type="checkbox" class="end-cb" data-id="${id}" data-idx="${i}"/>
+              <span style="font-size:9px;color:var(--text3)">ended</span>
             </div>
           </div>`
         }
       </td>
+      <td><input type="date" class="ms-input" value="${row.start||''}" data-id="${id}" data-idx="${i}" data-field="start"/></td>
+      <td><input type="date" class="ms-input" value="${row.end||''}" data-id="${id}" data-idx="${i}" data-field="end"/></td>
+      <td><input type="number" class="ms-input" value="${row.dur||''}" min="1" max="9999" data-id="${id}" data-idx="${i}" data-field="dur"/></td>
     </tr>`;
   });
 
-  html+=`</tbody></table><span class="add-row" data-id="${id}">+ Add milestone</span>`;
+  html+=`</tbody></table></div><span class="add-row" data-id="${id}">+ Add milestone</span>`;
   el.innerHTML=html;
 
   el.querySelectorAll('.ms-input').forEach(inp=>{
