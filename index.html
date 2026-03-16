@@ -645,6 +645,7 @@ function renderBox(boxId){
   html+=`<span class="add-btn" data-box="${boxId}" data-action="add-parent">＋ add parent group</span>`;
   el.innerHTML=html;
   bindBox(boxId);
+  setTimeout(equalizeRowHeights, 30);
 }
 
 function bindBox(boxId){
@@ -1610,13 +1611,6 @@ function equalizeRowHeights(){
       if(box) box.style.minHeight=maxH+'px';
     });
   });
-}
-
-// Run after every render
-const _origRenderBox=renderBox;
-function renderBox(boxId){
-  _origRenderBox(boxId);
-  setTimeout(equalizeRowHeights,50);
 }
 
 // Refresh countdowns every 60 seconds
