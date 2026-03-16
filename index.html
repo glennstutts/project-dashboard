@@ -80,6 +80,26 @@
   /* Milestone scrollable */
   .ms-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .ms-table { min-width: 480px; }
+  /* Contract milestone table */
+  .ctr-table { width: 100%; border-collapse: collapse; }
+  .ctr-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 2px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+  .ctr-table td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .ctr-table tr:last-child td { border-bottom: none; }
+  .ctr-name { font-size: 11px; color: var(--text); outline: none; background: transparent; display: block; }
+  .ctr-name:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
+  .ctr-date input { font-family: monospace; font-size: 10px; border: 1px solid transparent; border-radius: 3px; padding: 1px 2px; background: transparent; color: var(--text); cursor: pointer; width: 88px; color-scheme: dark; }
+  .ctr-date input:focus { border-color: var(--border2); background: var(--bg3); outline: none; }
+  /* Status badges */
+  .status-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 10px; cursor: pointer; white-space: nowrap; display: inline-block; }
+  .status-on-track { background: #27ae6022; color: #27ae60; border: 1px solid #27ae6044; }
+  .status-in-danger { background: #e67e2222; color: #e67e22; border: 1px solid #e67e2244; }
+  .status-delayed { background: #e74c3c22; color: #e74c3c; border: 1px solid #e74c3c44; }
+  .status-complete { background: #2471a322; color: #2471a3; border: 1px solid #2471a344; }
+  .status-none { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
+  /* Row highlight based on status */
+  .ctr-row-danger { background: rgba(230,126,34,0.04); }
+  .ctr-row-delayed { background: rgba(231,76,60,0.05); }
+  .ctr-row-complete { opacity: 0.6; }
   .task-cb { margin-top: 2px; cursor: pointer; flex-shrink: 0; width: 12px; height: 12px; accent-color: #27ae60; }
   .task-text { font-size: 11px; line-height: 1.4; flex: 1; outline: none; color: var(--text); background: transparent; }
   .task-text:focus { background: var(--bg3); border-radius: 2px; padding: 0 2px; }
@@ -388,32 +408,32 @@ const MS_DEFAULTS={
     {name:'MBT Delivery',start:'2026-06-01',end:'2026-08-01',dur:61,pct:0,started:false},
   ],
   'ms-es-ctr':[
-    {name:'Mobilization',start:'2025-09-02',end:'2025-09-17',dur:15,pct:100,started:true,startedOn:'2025-09-02'},
-    {name:'Circuit Mech. (4 circuits)',start:'2025-11-03',end:'2026-02-03',dur:92,pct:100,started:true,startedOn:'2025-11-03'},
-    {name:'Startup / Sync (1st)',start:'2026-02-05',end:'2026-03-05',dur:28,pct:50,started:true,startedOn:'2026-02-10'},
-    {name:'PV Proj. Substantial',start:'2026-05-22',end:'2026-08-22',dur:92,pct:0,started:false},
-    {name:'Final Completion',start:'2026-09-17',end:'2026-12-17',dur:91,pct:0,started:false},
+    {name:'Mobilization',deadline:'2025-09-17',status:'complete'},
+    {name:'Circuit Mech. (4 circuits)',deadline:'2026-02-03',status:'complete'},
+    {name:'Startup / Sync (1st)',deadline:'2026-03-05',status:'in-danger'},
+    {name:'PV Proj. Substantial',deadline:'2026-08-22',status:'on-track'},
+    {name:'Final Completion',deadline:'2026-12-17',status:'on-track'},
   ],
   'ms-l2-ctr':[
-    {name:'Mobilization',start:'2025-12-22',end:'2026-01-05',dur:14,pct:100,started:true,startedOn:'2025-12-22'},
-    {name:'Circuit Mechanical',start:'2026-01-11',end:'2026-01-25',dur:14,pct:100,started:true,startedOn:'2026-01-11'},
-    {name:'Startup / Sync',start:'2026-04-17',end:'2026-05-17',dur:30,pct:0,started:false},
-    {name:'PV Connect Complete',start:'2026-05-21',end:'2026-06-21',dur:31,pct:0,started:false},
-    {name:'Final Completion',start:'2027-05-27',end:'2027-08-27',dur:92,pct:0,started:false},
+    {name:'Mobilization',deadline:'2026-01-05',status:'complete'},
+    {name:'Circuit Mechanical',deadline:'2026-01-25',status:'complete'},
+    {name:'Startup / Sync',deadline:'2026-05-17',status:'on-track'},
+    {name:'PV Connect Complete',deadline:'2026-06-21',status:'on-track'},
+    {name:'Final Completion',deadline:'2027-08-27',status:'on-track'},
   ],
   'ms-lu-ctr':[
-    {name:'Mobilization',start:'2025-10-06',end:'2025-10-20',dur:14,pct:100,started:true,startedOn:'2025-10-06'},
-    {name:'Circuit Mechanical',start:'2026-01-13',end:'2026-01-27',dur:14,pct:100,started:true,startedOn:'2026-01-13'},
-    {name:'Startup / Sync',start:'2026-03-03',end:'2026-03-17',dur:14,pct:100,started:true,startedOn:'2026-03-10'},
-    {name:'Proj. Substantial',start:'2026-05-21',end:'2026-08-21',dur:92,pct:0,started:false},
-    {name:'Final Completion',start:'2026-08-09',end:'2026-11-08',dur:91,pct:0,started:false},
+    {name:'Mobilization',deadline:'2025-10-20',status:'complete'},
+    {name:'Circuit Mechanical',deadline:'2026-01-27',status:'complete'},
+    {name:'Startup / Sync',deadline:'2026-03-17',status:'complete'},
+    {name:'Proj. Substantial',deadline:'2026-08-21',status:'on-track'},
+    {name:'Final Completion',deadline:'2026-11-08',status:'on-track'},
   ],
   'ms-st-ctr':[
-    {name:'NTP / Mobilization',start:'2026-02-15',end:'2026-03-01',dur:14,pct:10,started:true,startedOn:'2026-02-20'},
-    {name:'Substation Energization',start:'2026-08-15',end:'2026-09-15',dur:31,pct:0,started:false},
-    {name:'BESS Commissioning',start:'2026-09-01',end:'2026-10-01',dur:30,pct:0,started:false},
-    {name:'Proj. Substantial',start:'2026-10-01',end:'2026-11-01',dur:31,pct:0,started:false},
-    {name:'Final Completion',start:'2026-11-15',end:'2026-12-15',dur:30,pct:0,started:false},
+    {name:'NTP / Mobilization',deadline:'2026-03-01',status:'in-danger'},
+    {name:'Substation Energization',deadline:'2026-09-15',status:'on-track'},
+    {name:'BESS Commissioning',deadline:'2026-10-01',status:'on-track'},
+    {name:'Proj. Substantial',deadline:'2026-11-01',status:'on-track'},
+    {name:'Final Completion',deadline:'2026-12-15',status:'on-track'},
   ],
 };
 
@@ -931,12 +951,57 @@ function bindCompControls(){
   });
   document.querySelectorAll('.restore-btn').forEach(btn=>{
     btn.addEventListener('click',()=>{
-      const idx=parseInt(btn.dataset.orig);const comp=loadC();const item=comp[idx];
+      const idx=parseInt(btn.dataset.orig);
+      const comp=loadC();
+      const item=comp[idx];
       const d=loadD();
-      if(d[item.boxId]?.parents?.[item.pi]?.subs?.[item.si]){
-        d[item.boxId].parents[item.pi].subs[item.si].tasks.push({id:uid(),text:item.text,star:item.star,priority:item.priority,created:Date.now(),links:item.links||[]});
+
+      if(item.isSubtask){
+        // Restoring a subtask — find its parent task in open items and add as subtask
+        // If parent not found, restore as standalone task
+        const parentBox=d[item.boxId]?.parents?.[item.pi]?.subs?.[item.si];
+        if(parentBox){
+          const parentTask=parentBox.tasks.find(t=>t.text===item.parentTask);
+          if(parentTask){
+            if(!parentTask.subtasks)parentTask.subtasks=[];
+            parentTask.subtasks.push({id:uid(),text:item.text,created:Date.now()});
+          } else {
+            // Parent not in open items — restore as standalone task
+            parentBox.tasks.push({id:uid(),text:item.text,star:false,priority:'none',created:Date.now(),links:[]});
+          }
+        }
+      } else {
+        // Restoring a parent task — also find and restore its grouped subtasks
+        if(d[item.boxId]?.parents?.[item.pi]?.subs?.[item.si]){
+          // Find all completed subtasks that belong to this parent
+          const matchingSubs=comp.filter(c=>
+            c.isSubtask &&
+            c.parentTask===item.text &&
+            c.sub===item.sub &&
+            c.box===item.box
+          );
+          // Build subtasks array from both stored subtasks and completed subs
+          const restoredSubtasks=[
+            ...(item.subtasks||[]).map(st=>({id:uid(),text:st.text,created:Date.now(),checked:st.checked||false})),
+            ...matchingSubs.map(st=>({id:uid(),text:st.text,created:Date.now(),checked:false}))
+          ];
+          d[item.boxId].parents[item.pi].subs[item.si].tasks.push({
+            id:uid(),
+            text:item.text,
+            star:item.star,
+            priority:item.priority,
+            created:Date.now(),
+            links:item.links||[],
+            subtasks:restoredSubtasks
+          });
+          // Remove the matching subtasks from completed log too
+          const subIdxs=matchingSubs.map(st=>comp.indexOf(st)).sort((a,b)=>b-a);
+          subIdxs.forEach(i=>{ if(i>-1&&i!==idx) comp.splice(i,1); });
+        }
       }
-      comp.splice(idx,1);saveC(comp);saveD(d);
+
+      comp.splice(comp.indexOf(item),1);
+      saveC(comp);saveD(d);
       BOXES.forEach(b=>renderBox(b.id));renderCompleted();
     });
   });
@@ -961,6 +1026,84 @@ function cdHTML(n, label){
 }
 function barC(n){if(n===null||n<0)return'#e74c3c';if(n<=7)return'#e67e22';if(n<=30)return'#d4ac0d';return'#27ae60'}
 function barW(n){if(n===null||n<=0)return 100;return Math.max(4,Math.min(100,(1-n/180)*100))}
+
+function isContractBox(id){ return id.endsWith('-ctr'); }
+
+function renderCTR(id, rows, data){
+  const el=document.getElementById(id); if(!el)return;
+  const STATUS_LABELS = {
+    'on-track':  {label:'On Track',  cls:'status-on-track'},
+    'in-danger': {label:'In Danger', cls:'status-in-danger'},
+    'delayed':   {label:'Delayed',   cls:'status-delayed'},
+    'complete':  {label:'Complete',  cls:'status-complete'},
+    'none':      {label:'Set status',cls:'status-none'},
+  };
+
+  let html=`<table class="ctr-table"><thead><tr>
+    <th>Milestone</th>
+    <th style="width:70px">Status</th>
+    <th style="width:70px">Days left</th>
+    <th style="width:88px">Deadline</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach((row,i)=>{
+    const n=daysDiff(row.deadline);
+    const status=row.status||'none';
+    const s=STATUS_LABELS[status]||STATUS_LABELS.none;
+    // Auto-color row based on status
+    const rowCls=status==='delayed'?'ctr-row-delayed':status==='in-danger'?'ctr-row-danger':status==='complete'?'ctr-row-complete':'';
+    // Countdown display
+    let cdDisp='';
+    if(n===null) cdDisp='<span class="cd cd-none">—</span>';
+    else if(status==='complete') cdDisp='<span class="started-badge sb-green">Done</span>';
+    else if(n<0) cdDisp=`<span class="cd cd-overdue">${Math.abs(n)}d late</span>`;
+    else if(n===0) cdDisp='<span class="cd cd-today">TODAY</span>';
+    else if(n<=7) cdDisp=`<span class="cd cd-soon">${n}d</span>`;
+    else cdDisp=`<span class="cd cd-ok">${n}d</span>`;
+
+    html+=`<tr class="${rowCls}">
+      <td><div class="ctr-name" contenteditable="true" data-id="${id}" data-idx="${i}">${row.name}</div></td>
+      <td><span class="status-badge ${s.cls} status-cycle" data-id="${id}" data-idx="${i}" title="Click to cycle status">${s.label}</span></td>
+      <td>${cdDisp}</td>
+      <td class="ctr-date"><input type="date" class="ms-input" value="${row.deadline||''}" data-id="${id}" data-idx="${i}" data-field="deadline"/></td>
+    </tr>`;
+  });
+
+  html+=`</tbody></table><span class="add-row" data-id="${id}">+ Add milestone</span>`;
+  el.innerHTML=html;
+
+  // Cycle status on click
+  const STATUS_CYCLE=['none','on-track','in-danger','delayed','complete'];
+  el.querySelectorAll('.status-cycle').forEach(badge=>{
+    badge.addEventListener('click',()=>{
+      const d=loadMS();const row=d[badge.dataset.id][parseInt(badge.dataset.idx)];
+      const cur=row.status||'none';
+      const next=STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur)+1)%STATUS_CYCLE.length];
+      row.status=next; saveMS(d); renderCTR(id,d[id],d);
+    });
+  });
+
+  // Name edit
+  el.querySelectorAll('.ctr-name').forEach(div=>{
+    div.addEventListener('blur',()=>{const d=loadMS();d[div.dataset.id][parseInt(div.dataset.idx)].name=div.textContent.trim();saveMS(d)});
+  });
+
+  // Date change
+  el.querySelectorAll('input[type=date]').forEach(inp=>{
+    inp.addEventListener('change',()=>{
+      const d=loadMS();d[inp.dataset.id][parseInt(inp.dataset.idx)][inp.dataset.field]=inp.value;
+      saveMS(d);renderCTR(id,d[id],d);
+    });
+  });
+
+  // Add row
+  el.querySelectorAll('.add-row').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const d=loadMS();d[btn.dataset.id].push({name:'New milestone',deadline:'',status:'none'});
+      saveMS(d);renderCTR(id,d[id],d);
+    });
+  });
+}
 
 function renderMS(id,rows,data){
   const el=document.getElementById(id);if(!el)return;
@@ -1149,14 +1292,15 @@ function renderAll() {
   const msData=loadMS();
   Object.keys(MS_DEFAULTS).forEach(id=>{
     if(!msData[id])msData[id]=JSON.parse(JSON.stringify(MS_DEFAULTS[id]));
-    renderMS(id,msData[id],msData);
+    if(isContractBox(id)) renderCTR(id,msData[id],msData);
+    else renderMS(id,msData[id],msData);
   });
 }
 
 // Refresh countdowns every 60 seconds
 setInterval(()=>{
   const d=loadMS();
-  Object.keys(MS_DEFAULTS).forEach(id=>renderMS(id,d[id],d));
+  Object.keys(MS_DEFAULTS).forEach(id=>{ if(isContractBox(id)) renderCTR(id,d[id],d); else renderMS(id,d[id],d); });
   document.getElementById('db-date').textContent=new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 },60000);
 
