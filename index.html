@@ -221,11 +221,69 @@
   </select>
 </div>
 
+<!-- Schedule Upload Modal -->
+<div id="schedule-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:20px;width:640px;max-height:80vh;overflow-y:auto;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:14px;font-weight:700;color:var(--text);margin:0">📅 Upload EPC Schedule</h2>
+      <span onclick="closeScheduleModal()" style="cursor:pointer;font-size:16px;color:var(--text3);padding:2px 6px">✕</span>
+    </div>
+
+    <!-- Step 1: Project + File selection -->
+    <div id="sched-step1">
+      <div id="sched-project-label" style="display:none;font-size:12px;font-weight:600;color:var(--text);margin-bottom:10px;padding:6px 8px;background:var(--bg3);border-radius:4px"></div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Which project is this schedule for?</label>
+        <select id="sched-project" style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:12px">
+          <option value="ms-es-con">Eagle Springs — Construction</option>
+          <option value="ms-l2-con">Lupinus 2 — Construction</option>
+          <option value="ms-lu-con">Lupinus — Construction</option>
+          <option value="ms-st-con">Staccato — Construction</option>
+          <option value="ms-es-ctr">Eagle Springs — Contract</option>
+          <option value="ms-l2-ctr">Lupinus 2 — Contract</option>
+          <option value="ms-lu-ctr">Lupinus — Contract</option>
+          <option value="ms-st-ctr">Staccato — Contract</option>
+        </select>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Upload schedule image (PNG, JPG, PDF screenshot)</label>
+        <input type="file" id="sched-file" accept="image/*,.pdf" style="font-size:11px;color:var(--text);width:100%"/>
+      </div>
+      <div style="margin-bottom:14px">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px">Anthropic API Key (for parsing)</label>
+        <input type="password" id="sched-apikey" placeholder="sk-ant-api03-..." style="width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-size:11px;box-sizing:border-box"/>
+        <div style="font-size:9px;color:var(--text3);margin-top:3px">Used only for this request. Not stored anywhere.</div>
+      </div>
+      <button onclick="parseSchedule()" style="width:100%;padding:8px;background:#2471a3;border:none;border-radius:4px;color:white;font-size:12px;font-weight:600;cursor:pointer">🔍 Parse Schedule</button>
+    </div>
+
+    <!-- Step 2: Loading -->
+    <div id="sched-loading" style="display:none;text-align:center;padding:30px 0">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:8px">↻ Reading schedule with Claude...</div>
+      <div style="font-size:11px;color:var(--text3)">Extracting milestone names and dates</div>
+    </div>
+
+    <!-- Step 3: Diff preview -->
+    <div id="sched-diff" style="display:none">
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">Review changes before applying:</div>
+      <div id="sched-diff-table" style="font-size:11px"></div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="applyScheduleChanges()" style="flex:1;padding:8px;background:#27ae60;border:none;border-radius:4px;color:white;font-size:12px;font-weight:600;cursor:pointer">✓ Apply All Changes</button>
+        <button onclick="closeScheduleModal()" style="padding:8px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text2);font-size:12px;cursor:pointer">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="sched-error" style="display:none;color:#e74c3c;font-size:11px;margin-top:10px;padding:8px;background:rgba(231,76,60,0.1);border-radius:4px"></div>
+  </div>
+</div>
+
 <div class="db-header">
   <h1>📋 Project Operations Dashboard</h1>
   <div style="display:flex;align-items:center;gap:16px">
     <span id="sync-status" style="font-size:10px;font-family:monospace;color:#27ae60">↻ Loading...</span>
     <button onclick="downloadBackup()" style="font-size:9px;padding:2px 8px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer" title="Download a backup of all your data">💾 Backup</button>
+
     <span class="db-date" id="db-date"></span>
   </div>
 </div>
@@ -242,15 +300,15 @@
   <div class="box"><div class="box-header c3b">Vendor — Back Pocket</div><div class="box-body" id="box-vendorbp"></div></div>
   <div class="box"><div class="box-header c4b">Pain Points</div><div class="box-body" id="box-painpoints"></div></div>
   <!-- Rows 3+4: Construction -->
-  <div class="box span2"><div class="box-header c1c">Eagle Springs — Construction</div><div class="box-body" id="ms-es-con"></div></div>
-  <div class="box span2"><div class="box-header c2c">Lupinus 2 — Construction</div><div class="box-body" id="ms-l2-con"></div></div>
-  <div class="box span2"><div class="box-header c3c">Lupinus — Construction</div><div class="box-body" id="ms-lu-con"></div></div>
-  <div class="box span2"><div class="box-header c4c">Staccato — Construction</div><div class="box-body" id="ms-st-con"></div></div>
+  <div class="box span2"><div class="box-header c1c" style="display:flex;justify-content:space-between;align-items:center">Eagle Springs — Construction<button onclick="openScheduleModal('ms-es-con')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-es-con"></div></div>
+  <div class="box span2"><div class="box-header c2c" style="display:flex;justify-content:space-between;align-items:center">Lupinus 2 — Construction<button onclick="openScheduleModal('ms-l2-con')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-l2-con"></div></div>
+  <div class="box span2"><div class="box-header c3c" style="display:flex;justify-content:space-between;align-items:center">Lupinus — Construction<button onclick="openScheduleModal('ms-lu-con')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-lu-con"></div></div>
+  <div class="box span2"><div class="box-header c4c" style="display:flex;justify-content:space-between;align-items:center">Staccato — Construction<button onclick="openScheduleModal('ms-st-con')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-st-con"></div></div>
   <!-- Rows 5+6: Contract -->
-  <div class="box span2"><div class="box-header c1d">Eagle Springs — Contract</div><div class="box-body" id="ms-es-ctr"></div></div>
-  <div class="box span2"><div class="box-header c2d">Lupinus 2 — Contract</div><div class="box-body" id="ms-l2-ctr"></div></div>
-  <div class="box span2"><div class="box-header c3d">Lupinus — Contract</div><div class="box-body" id="ms-lu-ctr"></div></div>
-  <div class="box span2"><div class="box-header c4d">Staccato — Contract</div><div class="box-body" id="ms-st-ctr"></div></div>
+  <div class="box span2"><div class="box-header c1d" style="display:flex;justify-content:space-between;align-items:center">Eagle Springs — Contract<button onclick="openScheduleModal('ms-es-ctr')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-es-ctr"></div></div>
+  <div class="box span2"><div class="box-header c2d" style="display:flex;justify-content:space-between;align-items:center">Lupinus 2 — Contract<button onclick="openScheduleModal('ms-l2-ctr')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-l2-ctr"></div></div>
+  <div class="box span2"><div class="box-header c3d" style="display:flex;justify-content:space-between;align-items:center">Lupinus — Contract<button onclick="openScheduleModal('ms-lu-ctr')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-lu-ctr"></div></div>
+  <div class="box span2"><div class="box-header c4d" style="display:flex;justify-content:space-between;align-items:center">Staccato — Contract<button onclick="openScheduleModal('ms-st-ctr')" style="font-size:8px;padding:1px 6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:white;cursor:pointer;white-space:nowrap" title="Upload EPC schedule for this project">📅 Upload</button></div><div class="box-body" id="ms-st-ctr"></div></div>
 </div>
 
 <!-- Completed log -->
@@ -541,7 +599,10 @@ let linkTarget=null;
 document.getElementById('link-cancel').onclick=()=>document.getElementById('link-dialog').style.display='none';
 document.getElementById('link-save').onclick=()=>{
   const url=document.getElementById('link-url').value.trim();
-  const label=document.getElementById('link-label').value.trim()||url.slice(0,40);
+  let label=document.getElementById('link-label').value.trim();
+  if(!label){
+    try{ label=new URL(url).hostname.replace('www.',''); }catch(e){ label=url.slice(0,40); }
+  }
   if(!url||!linkTarget)return;
   const d=loadD();const{boxId,pi,si,ti}=linkTarget;
   const task=d[boxId].parents[pi].subs[si].tasks[ti];
@@ -625,7 +686,10 @@ function renderBox(boxId){
                 <span class="task-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Delete">✕</span>
               </div>
             </div>`;
-            // Render subtasks/notes
+            // Render subtasks/notes — indented under task
+            if((task.subtasks||[]).length>0){
+              html+=`<div style="margin-left:28px;border-left:2px solid var(--border);padding-left:8px;margin-top:1px;margin-bottom:2px">`;
+            }
             (task.subtasks||[]).forEach((st,sti)=>{
               const stAc=ageClass(st.created||Date.now());
               const stChecked=st.checked||false;
@@ -642,6 +706,9 @@ function renderBox(boxId){
                 </div>
               </div>`;
             });
+            if((task.subtasks||[]).length>0){
+              html+=`</div>`;
+            }
           });
           html+=`<div style="padding-left:4px;margin-top:2px">
             <span class="add-task-btn add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}">＋ task</span>
@@ -702,13 +769,14 @@ function bindBox(boxId){
       e.preventDefault();
       const pasted=(e.clipboardData||window.clipboardData).getData('text').trim();
       if(isURL(pasted)){
-        const label=prompt('Link label (leave blank to use URL):','');
         const d=loadD();const{pi,si,ti}=s.dataset;
         const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
         if(!task.links)task.links=[];
-        task.links.push({url:pasted,label:label||pasted.slice(0,60)});
-        // If task text is empty or "New item", clear it so link IS the task visually
-        task.text=''; // Clear text so link becomes the task visually
+        // Use current task text as label if it exists and isn't placeholder, else use domain
+        const existingText=(task.text||'').replace(/<[^>]*>/g,'').trim();
+        const urlLabel=existingText&&existingText!=='New item'?existingText:new URL(pasted).hostname.replace('www.','');
+        task.links.push({url:pasted,label:urlLabel});
+        task.text=''; // Clear so link IS the task
         saveD(d);renderBox(boxId);
       } else {
         document.execCommand('insertText',false,pasted);
@@ -1753,6 +1821,230 @@ function renderAll() {
     if(isContractBox(id)) renderCTR(id,msData[id],msData);
     else renderMS(id,msData[id],msData);
   });
+}
+
+// ── Schedule Upload & Parse ──
+let _parsedMilestones = null;
+let _scheduleTargetId = null;
+
+function openScheduleModal(projectId){
+  document.getElementById('schedule-modal').style.display='flex';
+  document.getElementById('sched-step1').style.display='block';
+  document.getElementById('sched-loading').style.display='none';
+  document.getElementById('sched-diff').style.display='none';
+  document.getElementById('sched-error').style.display='none';
+  // Pre-select project if passed in
+  if(projectId){
+    const sel=document.getElementById('sched-project');
+    if(sel)sel.value=projectId;
+    // Hide the project selector since it's pre-set from the panel button
+    sel.closest('div').style.display='none';
+    document.getElementById('sched-project-label').textContent='Project: '+sel.options[sel.selectedIndex].text;
+    document.getElementById('sched-project-label').style.display='block';
+  } else {
+    const sel=document.getElementById('sched-project');
+    sel.closest('div').style.display='block';
+    document.getElementById('sched-project-label').style.display='none';
+  }
+}
+
+function closeScheduleModal(){
+  document.getElementById('schedule-modal').style.display='none';
+  _parsedMilestones=null;
+}
+
+async function parseSchedule(){
+  const file=document.getElementById('sched-file').files[0];
+  const apiKey=document.getElementById('sched-apikey').value.trim();
+  const projectId=document.getElementById('sched-project').value;
+
+  if(!file){showSchedError('Please select a schedule image.');return;}
+  if(!apiKey){showSchedError('Please enter your Anthropic API key.');return;}
+
+  document.getElementById('sched-step1').style.display='none';
+  document.getElementById('sched-loading').style.display='block';
+  document.getElementById('sched-error').style.display='none';
+  _scheduleTargetId=projectId;
+
+  try {
+    // Convert file to base64
+    const base64=await new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=rej;
+      r.readAsDataURL(file);
+    });
+
+    const isContract=projectId.endsWith('-ctr');
+    const prompt=isContract
+      ? `This is a project schedule or milestone list. Extract ONLY the contract deadlines or milestones.
+For each milestone return a JSON array like:
+[{"name":"Mobilization","deadline":"2025-09-17"},{"name":"Final Completion","deadline":"2026-12-17"}]
+Use ISO date format YYYY-MM-DD. If a date has an asterisk (*) include it anyway without the asterisk.
+Return ONLY the JSON array, no other text.`
+      : `This is a project schedule. Extract ONLY rows from the "PROJECT MILESTONES" section (rows starting with *MILESTONE:).
+For each milestone return a JSON array like:
+[{"name":"TO#1 RELEASE / DESIGN - PV","section":"PV","start":"2025-06-13","end":"2025-06-13"},
+ {"name":"BESS CONSTRUCTION START","section":"BESS","start":"2025-09-12","end":null}]
+Rules:
+- Remove the "*MILESTONE: TO#" prefix and "MILESTONE: " prefix from names
+- Assign section "PV" if the name contains PV, SOLAR, DC, MV, INVERTER, SUBSTATION, COMMISSIONING, FINAL
+- Assign section "BESS" if the name contains BESS, BATTERY, INV/FMRS, EMS, SOLBANK, AUX, HOT CX
+- Use ISO date format YYYY-MM-DD. Dates with A suffix (like "13-Jun-25 A") are actuals — use them as-is
+- If only one date column has a value, put it in "end"
+- Return ONLY the JSON array, no other text.`;
+
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':apiKey,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-opus-4-5',
+        max_tokens:2000,
+        messages:[{
+          role:'user',
+          content:[
+            {type:'image',source:{type:'base64',media_type:file.type||'image/png',data:base64}},
+            {type:'text',text:prompt}
+          ]
+        }]
+      })
+    });
+
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error?.message||'API error '+resp.status);
+
+    const text=data.content[0].text.trim();
+    const jsonStr=text.startsWith('[')? text : text.match(/\[[\s\S]*\]/)?.[0];
+    if(!jsonStr)throw new Error('Could not find JSON in response:
+'+text.slice(0,200));
+
+    _parsedMilestones=JSON.parse(jsonStr);
+    showScheduleDiff(_parsedMilestones, projectId);
+
+  } catch(e){
+    document.getElementById('sched-loading').style.display='none';
+    document.getElementById('sched-step1').style.display='block';
+    showSchedError('Error: '+e.message);
+  }
+}
+
+function showScheduleDiff(parsed, projectId){
+  document.getElementById('sched-loading').style.display='none';
+  document.getElementById('sched-diff').style.display='block';
+
+  const isContract=projectId.endsWith('-ctr');
+  const existing=loadMS()[projectId]||[];
+  const rows=[];
+
+  parsed.forEach(newRow=>{
+    // Try to find matching existing row by name similarity
+    const existing_match=existing.find(e=>{
+      const a=e.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+      const b=newRow.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+      return a===b||a.includes(b)||b.includes(a);
+    });
+
+    if(existing_match){
+      const changes=[];
+      if(isContract){
+        if(existing_match.deadline!==newRow.deadline)
+          changes.push({field:'deadline',old:existing_match.deadline,new:newRow.deadline});
+      } else {
+        if(newRow.start&&existing_match.start!==newRow.start)
+          changes.push({field:'start',old:existing_match.start,new:newRow.start});
+        if(newRow.end&&existing_match.end!==newRow.end)
+          changes.push({field:'end',old:existing_match.end,new:newRow.end});
+      }
+      if(changes.length) rows.push({type:'update',name:newRow.name,changes,newRow});
+    } else {
+      rows.push({type:'add',name:newRow.name,newRow});
+    }
+  });
+
+  if(rows.length===0){
+    document.getElementById('sched-diff-table').innerHTML=
+      '<div style="color:#27ae60;padding:10px;text-align:center">✓ No changes — dashboard already matches this schedule</div>';
+    return;
+  }
+
+  let html='<table style="width:100%;border-collapse:collapse">';
+  html+='<tr style="font-size:10px;color:var(--text3);border-bottom:1px solid var(--border)"><th style="text-align:left;padding:4px">Milestone</th><th style="padding:4px">Field</th><th style="padding:4px">Current</th><th style="padding:4px">→ New</th></tr>';
+
+  rows.forEach(r=>{
+    if(r.type==='add'){
+      html+=`<tr style="background:rgba(39,174,96,0.06)">
+        <td style="padding:5px 4px;font-size:11px">${r.name}</td>
+        <td style="padding:5px 4px;font-size:10px;color:#27ae60;text-align:center">NEW</td>
+        <td colspan="2" style="padding:5px 4px;font-size:10px;color:var(--text3);text-align:center">${r.newRow.end||r.newRow.deadline||''}</td>
+      </tr>`;
+    } else {
+      r.changes.forEach((c,i)=>{
+        html+=`<tr style="${i%2===0?'':'background:var(--bg3)'}">
+          <td style="padding:5px 4px;font-size:11px">${i===0?r.name:''}</td>
+          <td style="padding:5px 4px;font-size:10px;color:var(--text3);text-align:center">${c.field}</td>
+          <td style="padding:5px 4px;font-size:10px;color:#e74c3c;text-align:center;text-decoration:line-through">${c.old||'—'}</td>
+          <td style="padding:5px 4px;font-size:10px;color:#27ae60;text-align:center">${c.new||'—'}</td>
+        </tr>`;
+      });
+    }
+  });
+  html+='</table>';
+  html+=`<div style="margin-top:8px;font-size:10px;color:var(--text3)">${rows.length} milestone(s) with changes from ${parsed.length} parsed</div>`;
+  document.getElementById('sched-diff-table').innerHTML=html;
+}
+
+function applyScheduleChanges(){
+  if(!_parsedMilestones||!_scheduleTargetId)return;
+  const isContract=_scheduleTargetId.endsWith('-ctr');
+  const d=loadMS();
+  if(!d[_scheduleTargetId])d[_scheduleTargetId]=[];
+
+  _parsedMilestones.forEach(newRow=>{
+    const idx=d[_scheduleTargetId].findIndex(e=>{
+      const a=e.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+      const b=newRow.name.toLowerCase().replace(/[^a-z0-9]/g,'');
+      return a===b||a.includes(b)||b.includes(a);
+    });
+
+    if(idx>=0){
+      if(isContract){
+        if(newRow.deadline)d[_scheduleTargetId][idx].deadline=newRow.deadline;
+      } else {
+        if(newRow.start)d[_scheduleTargetId][idx].start=newRow.start;
+        if(newRow.end)d[_scheduleTargetId][idx].end=newRow.end;
+        if(newRow.section)d[_scheduleTargetId][idx].section=newRow.section;
+      }
+    } else {
+      // New milestone — add it
+      d[_scheduleTargetId].push({
+        name:newRow.name,
+        start:newRow.start||'',
+        end:newRow.end||newRow.deadline||'',
+        deadline:newRow.deadline||'',
+        dur:0,pct:0,started:false,
+        section:newRow.section||'General'
+      });
+    }
+  });
+
+  saveMS(d);
+  const msData=loadMS();
+  Object.keys(MS_DEFAULTS).forEach(id=>{
+    if(isContractBox(id))renderCTR(id,msData[id],msData);
+    else renderMS(id,msData[id],msData);
+  });
+  closeScheduleModal();
+  alert('✓ Schedule applied! '+_parsedMilestones.length+' milestones updated.');
+}
+
+function showSchedError(msg){
+  const el=document.getElementById('sched-error');
+  el.textContent=msg;el.style.display='block';
 }
 
 // ── Manual backup download ──
