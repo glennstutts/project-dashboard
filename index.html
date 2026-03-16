@@ -207,7 +207,7 @@ function countData(d) {
 async function fetchBin() {
   try {
     const r = await fetch(JSONBIN_URL + '/latest', {
-      headers: { 'X-Master-Key': JSONBIN_KEY }
+      headers: { 'X-Access-Key': JSONBIN_KEY }
     });
     const j = await r.json();
     const remote = j.record || { actions: {}, completed: [], milestones: {} };
@@ -239,7 +239,7 @@ async function saveBin(data) {
   try {
     await fetch(JSONBIN_URL, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': JSONBIN_KEY },
+      headers: { 'Content-Type': 'application/json', 'X-Access-Key': JSONBIN_KEY },
       body: JSON.stringify(data)
     });
     const actionCount = Object.values(data.actions||{}).reduce((t,b)=>t+(b.parents||[]).reduce((tt,p)=>tt+(p.subs||[]).reduce((ts,s)=>ts+(s.tasks||[]).length,0),0),0);
