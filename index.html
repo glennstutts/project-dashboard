@@ -876,28 +876,37 @@ function renderCompleted(){
     body.innerHTML=html;bindCompControls();return;
   }
 
+  // Group orphaned subtasks with their parent in completed log
+  function buildGroups(items){
+    const parents=[],orphans=[];
+    items.forEach(item=>{ if(!item.isSubtask) parents.push({item,origIdx:comp.indexOf(item),subs:[]}); else orphans.push({item,origIdx:comp.indexOf(item)}); });
+    orphans.forEach(o=>{ const p=parents.find(g=>g.item.text===o.item.parentTask&&g.item.sub===o.item.sub); if(p) p.subs.push(o); else parents.push({item:o.item,origIdx:o.origIdx,subs:[],orphan:true}); });
+    return parents;
+  }
+  const groups=buildGroups(sorted);
+
   html+=`<table class="completed-table"><thead><tr>
     <th>Item</th><th>Site / Group</th><th>Box</th><th>Days open</th><th>Completed</th><th></th>
   </tr></thead><tbody>`;
 
   let lastGrp='';
-  sorted.forEach(item=>{
-    const origIdx=comp.indexOf(item);
+  groups.forEach(({item,origIdx,subs,orphan})=>{
     if(compSort==='site'||compSort==='box'){
       const grp=compSort==='site'?item.sub:item.box;
       if(grp!==lastGrp){
-        html+=`<tr class="grp-row"><td colspan="6">
-          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.subColor||'#888'};margin-right:6px;vertical-align:middle"></span>
-          ${grp}
-        </td></tr>`;
+        html+=`<tr class="grp-row"><td colspan="6"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${item.subColor||'#888'};margin-right:6px;vertical-align:middle"></span>${grp}</td></tr>`;
         lastGrp=grp;
       }
     }
     const ageC=item.createdDaysAgo>=14?'#e74c3c':item.createdDaysAgo>=7?'#d4ac0d':'#27ae60';
-    html+=`<tr>
-      <td>${item.star?'⭐ ':''}${item.isSubtask?'<span style="font-size:9px;color:#888">↳ note</span> ':''}${item.text||'—'}${item.parentTask?'<div style="font-size:9px;color:#666">on: '+item.parentTask+'</div>':''}
-        ${(item.links||[]).map(l=>`<br><a class="link-label" href="${l.url}" target="_blank">🔗 ${l.label}</a>`).join('')}
-        ${(item.subtasks||[]).length?'<div style="font-size:9px;color:#666;margin-top:2px">'+item.subtasks.map(st=>'↳ '+st.text+(st.checked?'  ✓':'')).join('<br>')+'</div>':''}
+    const isNote=item.isSubtask&&orphan;
+    html+=`<tr${isNote?' style="opacity:0.75"':''}>
+      <td>
+        ${item.star?'⭐ ':''}${isNote?'<span style="font-size:9px;color:#888">↳ note</span> ':''}${item.text||'—'}
+        ${isNote&&item.parentTask?'<div style="font-size:9px;color:#666">on: '+item.parentTask+'</div>':''}
+        ${(item.links||[]).map(l=>'<br><a class="link-label" href="'+l.url+'" target="_blank">🔗 '+l.label+'</a>').join('')}
+        ${subs.length?'<div style="margin-top:4px;padding:3px 6px;border-left:2px solid #444;background:rgba(255,255,255,0.03)">'+subs.map(({item:st,origIdx:si})=>'<div style="font-size:10px;color:#aaa;display:flex;align-items:center;gap:6px;padding:1px 0"><span style="color:#27ae60">✓</span>'+st.text+'<span style="font-size:9px;color:#555;margin-left:auto">'+st.completedAt+'</span><span class="restore-btn" data-orig="'+si+'" title="Restore note">↩</span></div>').join('')+'</div>':''}
+        ${(item.subtasks||[]).map(st=>'<div style="font-size:10px;color:#666;padding-left:8px;border-left:2px solid #333;margin-top:1px">↳ '+st.text+(st.checked?' ✓':'')+'</div>').join('')}
       </td>
       <td><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${item.subColor||'#888'};margin-right:4px;vertical-align:middle"></span>${item.sub||'—'}</td>
       <td style="font-size:10px;color:#666">${item.box}</td>
@@ -955,8 +964,8 @@ function barW(n){if(n===null||n<=0)return 100;return Math.max(4,Math.min(100,(1-
 
 function renderMS(id,rows,data){
   const el=document.getElementById(id);if(!el)return;
-  let html=`<table class="ms-table"><thead><tr>
-    <th>Milestone</th><th>Start</th><th>End</th><th title="Duration (days)">Dur</th><th>%</th><th>Started</th><th>Countdown to End</th>
+  let html=`<div class="ms-scroll"><table class="ms-table"><thead><tr>
+    <th>Milestone</th><th style="width:52px">%</th><th style="width:90px">▶ Start</th><th style="width:90px">■ End</th><th style="width:80px">Start</th><th style="width:80px">End</th><th style="width:36px">Dur</th>
   </tr></thead><tbody>`;
 
   rows.forEach((row,i)=>{
@@ -1035,7 +1044,7 @@ function renderMS(id,rows,data){
     </tr>`;
   });
 
-  html+=`</tbody></table></div><span class="add-row" data-id="${id}">+ Add milestone</span>`;
+  html+=`</tbody></table></div></div><span class="add-row" data-id="${id}">+ Add milestone</span>`;
   el.innerHTML=html;
 
   el.querySelectorAll('.ms-input').forEach(inp=>{
