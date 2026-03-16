@@ -29,8 +29,8 @@
   .db-date { font-family: monospace; font-size: 11px; color: var(--text2); }
 
   /* Grid */
-  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; align-items: start; width: 100%; }
-  .box { border: 1px solid var(--border); border-radius: 4px; overflow: hidden; display: flex; flex-direction: column; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; align-items: stretch; width: 100%; }
+  .box { border: 1px solid var(--border); border-radius: 4px; overflow: visible; display: flex; flex-direction: column; }
   .box-header { padding: 5px 8px; font-weight: 700; font-size: 11px; color: white; text-transform: uppercase; letter-spacing: .5px; }
   .box-body { padding: 4px 6px; flex: 1; background: var(--bg2); min-height: 60px; }
   .box { border: 1px solid #ccc; border-radius: 4px; overflow: visible; display: flex; flex-direction: column; min-width: 140px; }
@@ -55,13 +55,16 @@
   .h-sub-label:hover { background: var(--bg3); }
   .h-sub-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .h-sub-body { padding-left: 12px; }
-  .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; cursor: grab; }
-  .h-task.dragging { opacity: 0.4; cursor: grabbing; }
-  .h-task.drag-over { border-top: 2px solid #2471a3; }
+  .h-task { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px; border-radius: 3px; position: relative; }
+  .h-task.dragging { opacity: 0.4; }
+  .h-task.drag-over { border-top: 2px solid #2471a3; margin-top: 2px; }
   .h-sub.dragging-sub { opacity: 0.4; }
-  .h-sub.drag-over-sub { border-top: 2px solid #27ae60; }
-  .drag-handle { font-size: 10px; color: var(--text3); cursor: grab; flex-shrink: 0; padding: 0 2px; margin-top: 2px; opacity: 0; }
-  .h-task:hover .drag-handle { opacity: 1; }
+  .h-sub.drag-over-sub { border-top: 2px solid #27ae60; margin-top: 2px; }
+  .h-parent.dragging-parent { opacity: 0.4; }
+  .h-parent.drag-over-parent { border-top: 2px solid #e67e22; margin-top: 2px; }
+  .drag-handle { font-size: 11px; color: var(--text3); cursor: grab; flex-shrink: 0; padding: 0 2px; margin-top: 1px; opacity: 0; user-select: none; }
+  .h-task:hover .drag-handle, .h-sub-label:hover .drag-handle, .h-parent-label:hover .drag-handle { opacity: 0.6; }
+  .drag-handle:hover { opacity: 1 !important; }
   .h-task:hover { background: var(--bg3); }
   .h-task.age-yellow { border-left: 2px solid #f1c40f; padding-left: 4px; }
   .h-task.age-red { border-left: 2px solid #e74c3c; padding-left: 4px; }
@@ -411,37 +414,38 @@ const BOXES=[
 // ═══════════════════════════════════════════════════════
 // MILESTONE DEFAULTS — UPDATE THESE TO MATCH YOUR SCHEDULE
 // ═══════════════════════════════════════════════════════
+const _sectionState={};
 const MS_DEFAULTS={
   'ms-es-con':[
-    {name:'DC Electrical Complete',start:'2025-11-17',end:'2026-02-26',dur:101,pct:100,started:true,startedOn:'2025-11-18'},
-    {name:'MV Electrical & Inverters',start:'2025-12-17',end:'2026-04-21',dur:125,pct:80,started:true,startedOn:'2025-12-17'},
-    {name:'Testing / Mechanical',start:'2026-03-10',end:'2026-06-10',dur:92,pct:0,started:false},
-    {name:'BESS Inverter Delivery',start:'2026-02-14',end:'2026-03-14',dur:28,pct:60,started:true,startedOn:'2026-02-14'},
-    {name:'BESS Battery Cooling',start:'2026-06-21',end:'2026-08-21',dur:61,pct:0,started:false},
-    {name:'Final Completion',start:'2026-10-17',end:'2026-12-17',dur:61,pct:0,started:false},
+    {name:'DC Electrical Complete',start:'2025-11-17',end:'2026-02-26',dur:101,pct:100,started:true,startedOn:'2025-11-18',section:'PV'},
+    {name:'MV Electrical & Inverters',start:'2025-12-17',end:'2026-04-21',dur:125,pct:80,started:true,startedOn:'2025-12-17',section:'PV'},
+    {name:'Testing / Mechanical',start:'2026-03-10',end:'2026-06-10',dur:92,pct:0,started:false,section:'PV'},
+    {name:'BESS Inverter Delivery',start:'2026-02-14',end:'2026-03-14',dur:28,pct:60,started:true,startedOn:'2026-02-14',section:'BESS'},
+    {name:'BESS Battery Cooling',start:'2026-06-21',end:'2026-08-21',dur:61,pct:0,started:false,section:'BESS'},
+    {name:'Final Completion',start:'2026-10-17',end:'2026-12-17',dur:61,pct:0,started:false,section:'PV'},
   ],
   'ms-l2-con':[
-    {name:'Substation Construction',start:'2026-02-27',end:'2026-04-27',dur:59,pct:20,started:true,startedOn:'2026-03-02'},
-    {name:'DC Electrical Complete',start:'2026-03-25',end:'2026-05-25',dur:61,pct:0,started:false},
-    {name:'MV Electrical',start:'2026-04-15',end:'2026-06-15',dur:61,pct:0,started:false},
-    {name:'BESS Battery Install',start:'2026-05-10',end:'2026-07-10',dur:61,pct:0,started:false},
-    {name:'Testing / Commissioning',start:'2026-06-30',end:'2026-08-31',dur:62,pct:0,started:false},
-    {name:'Final Completion',start:'2026-09-17',end:'2026-11-17',dur:61,pct:0,started:false},
+    {name:'Substation Construction',start:'2026-02-27',end:'2026-04-27',dur:59,pct:20,started:true,startedOn:'2026-03-02',section:'PV'},
+    {name:'DC Electrical Complete',start:'2026-03-25',end:'2026-05-25',dur:61,pct:0,started:false,section:'PV'},
+    {name:'MV Electrical',start:'2026-04-15',end:'2026-06-15',dur:61,pct:0,started:false,section:'PV'},
+    {name:'BESS Battery Install',start:'2026-05-10',end:'2026-07-10',dur:61,pct:0,started:false,section:'BESS'},
+    {name:'Testing / Commissioning',start:'2026-06-30',end:'2026-08-31',dur:62,pct:0,started:false,section:'BESS'},
+    {name:'Final Completion',start:'2026-09-17',end:'2026-11-17',dur:61,pct:0,started:false,section:'PV'},
   ],
   'ms-lu-con':[
-    {name:'DC Electrical Complete',start:'2025-11-14',end:'2026-02-14',dur:92,pct:100,started:true,startedOn:'2025-11-14'},
-    {name:'MV Electrical',start:'2025-12-15',end:'2026-03-15',dur:90,pct:75,started:true,startedOn:'2025-12-15'},
-    {name:'BESS Battery Install',start:'2026-01-10',end:'2026-04-10',dur:90,pct:40,started:true,startedOn:'2026-01-10'},
-    {name:'BESS Cooling',start:'2026-02-13',end:'2026-05-13',dur:89,pct:10,started:true,startedOn:'2026-02-20'},
-    {name:'Testing / Commissioning',start:'2026-02-13',end:'2026-05-13',dur:89,pct:0,started:false},
-    {name:'Final Completion',start:'2026-03-28',end:'2026-06-28',dur:92,pct:0,started:false},
+    {name:'DC Electrical Complete',start:'2025-11-14',end:'2026-02-14',dur:92,pct:100,started:true,startedOn:'2025-11-14',section:'PV'},
+    {name:'MV Electrical',start:'2025-12-15',end:'2026-03-15',dur:90,pct:75,started:true,startedOn:'2025-12-15',section:'PV'},
+    {name:'BESS Battery Install',start:'2026-01-10',end:'2026-04-10',dur:90,pct:40,started:true,startedOn:'2026-01-10',section:'BESS'},
+    {name:'BESS Cooling',start:'2026-02-13',end:'2026-05-13',dur:89,pct:10,started:true,startedOn:'2026-02-20',section:'BESS'},
+    {name:'Testing / Commissioning',start:'2026-02-13',end:'2026-05-13',dur:89,pct:0,started:false,section:'BESS'},
+    {name:'Final Completion',start:'2026-03-28',end:'2026-06-28',dur:92,pct:0,started:false,section:'PV'},
   ],
   'ms-st-con':[
-    {name:'Utility Drive Path Turnover',start:'2026-04-01',end:'2026-05-01',dur:30,pct:0,started:false},
-    {name:'Substation Pad Prep',start:'2026-03-28',end:'2026-04-28',dur:31,pct:0,started:false},
-    {name:'BESS Pad Prep Complete',start:'2026-04-12',end:'2026-06-12',dur:61,pct:0,started:false},
-    {name:'Site Rep Deploy',start:'2026-04-14',end:'2026-05-14',dur:30,pct:0,started:false},
-    {name:'MBT Delivery',start:'2026-06-01',end:'2026-08-01',dur:61,pct:0,started:false},
+    {name:'Utility Drive Path Turnover',start:'2026-04-01',end:'2026-05-01',dur:30,pct:0,started:false,section:'PV'},
+    {name:'Substation Pad Prep',start:'2026-03-28',end:'2026-04-28',dur:31,pct:0,started:false,section:'PV'},
+    {name:'BESS Pad Prep Complete',start:'2026-04-12',end:'2026-06-12',dur:61,pct:0,started:false,section:'BESS'},
+    {name:'Site Rep Deploy',start:'2026-04-14',end:'2026-05-14',dur:30,pct:0,started:false,section:'PV'},
+    {name:'MBT Delivery',start:'2026-06-01',end:'2026-08-01',dur:61,pct:0,started:false,section:'BESS'},
   ],
   'ms-es-ctr':[
     {name:'Mobilization',deadline:'2025-09-17',status:'complete'},
@@ -558,6 +562,7 @@ function renderBox(boxId){
   box.parents.forEach((parent,pi)=>{
     html+=`<div class="h-parent">
       <div class="h-parent-label" data-box="${boxId}" data-pi="${pi}">
+        <span class="drag-handle parent-drag-handle" data-box="${boxId}" data-pi="${pi}">⠿</span>
         <span class="h-chevron ${parent.open?'open':''}">▶</span>
         <span style="flex:1" contenteditable="true" class="parent-name" data-box="${boxId}" data-pi="${pi}">${parent.label}</span>
         <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-action="add-sub">＋ group</span>
@@ -577,14 +582,13 @@ function renderBox(boxId){
             const finalSubClass=subManualClass||subPriorityClass;
             html+=`<div class="h-sub">
           <div class="h-sub-label ${finalSubClass}" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
+            <span class="drag-handle sub-drag-handle" data-box="${boxId}" data-pi="${pi}" data-si="${si}">⠿</span>
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
             <span style="flex:1" contenteditable="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
             <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
           </div>
-          <div style="padding-left:20px;margin-bottom:2px">
-            <span class="add-task-btn add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}">＋ task</span>
-          </div>`;
+`;
 
         if(sub.open){
           html+=`<div class="h-sub-body">`;
@@ -625,6 +629,9 @@ function renderBox(boxId){
               </div>`;
             });
           });
+          html+=`<div style="padding-left:4px;margin-top:2px">
+            <span class="add-task-btn add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}">＋ task</span>
+          </div>`;
           html+=`</div>`;
         }
         html+=`</div>`;
@@ -676,15 +683,15 @@ function bindBox(boxId){
       e.preventDefault();
       const pasted=(e.clipboardData||window.clipboardData).getData('text').trim();
       if(isURL(pasted)){
-        // Show label prompt then store as link
-        const label=prompt('Link label (or press Enter for URL as label):','');
+        const label=prompt('Link label (leave blank to use URL):','');
         const d=loadD();const{pi,si,ti}=s.dataset;
         const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
         if(!task.links)task.links=[];
-        task.links.push({url:pasted,label:label||pasted.slice(0,50)});
+        task.links.push({url:pasted,label:label||pasted.slice(0,60)});
+        // If task text is empty or "New item", clear it so link IS the task visually
+        if(!task.text||task.text==='New item'||task.text.trim()===''||task.text.trim()==='(link)')task.text='';
         saveD(d);renderBox(boxId);
       } else {
-        // Plain text paste
         document.execCommand('insertText',false,pasted);
       }
     });
@@ -835,35 +842,107 @@ function bindBox(boxId){
     });
   });
 
-  // ── Drag and drop tasks ──
-  let dragSrc=null;
+  // ── Drag and drop — tasks, subs, parents ──
+  let dragType=null, dragData=null;
+
+  function clearDragStyles(){
+    el.querySelectorAll('.drag-over,.drag-over-sub,.drag-over-parent,.dragging,.dragging-sub,.dragging-parent').forEach(r=>{
+      r.classList.remove('drag-over','drag-over-sub','drag-over-parent','dragging','dragging-sub','dragging-parent');
+    });
+  }
+
+  // Tasks
   el.querySelectorAll('.h-task').forEach(row=>{
     row.setAttribute('draggable','true');
     row.addEventListener('dragstart',e=>{
-      dragSrc=row;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed='move';
-      e.dataTransfer.setData('text/plain',JSON.stringify({pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti}));
+      dragType='task';dragData={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti};
+      row.classList.add('dragging');e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','task');
     });
-    row.addEventListener('dragend',()=>{
-      row.classList.remove('dragging');
-      el.querySelectorAll('.drag-over').forEach(r=>r.classList.remove('drag-over'));
-    });
+    row.addEventListener('dragend',clearDragStyles);
     row.addEventListener('dragover',e=>{
-      e.preventDefault();e.dataTransfer.dropEffect='move';
-      el.querySelectorAll('.drag-over').forEach(r=>r.classList.remove('drag-over'));
-      if(row!==dragSrc)row.classList.add('drag-over');
+      if(dragType!=='task')return;
+      e.preventDefault();clearDragStyles();
+      el.querySelector('.dragging')?.classList.add('dragging');
+      if(row.dataset.si===dragData.si&&row.dataset.pi===dragData.pi)row.classList.add('drag-over');
     });
     row.addEventListener('drop',e=>{
       e.preventDefault();
-      if(!dragSrc||dragSrc===row)return;
-      const src=JSON.parse(e.dataTransfer.getData('text/plain'));
-      const dst={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti};
-      if(src.pi!==dst.pi||src.si!==dst.si)return; // only reorder within same subgroup
+      if(dragType!=='task'||!dragData)return;
+      const src=dragData;const dst={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti};
+      if(src.pi!==dst.pi||src.si!==dst.si)return;
       const d=loadD();
       const tasks=d[boxId].parents[parseInt(src.pi)].subs[parseInt(src.si)].tasks;
-      const [moved]=tasks.splice(parseInt(src.ti),1);
+      const[moved]=tasks.splice(parseInt(src.ti),1);
       tasks.splice(parseInt(dst.ti),0,moved);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Subgroups — drag entire subgroup with all tasks
+  el.querySelectorAll('.h-sub').forEach(sub=>{
+    const handle=sub.querySelector('.sub-drag-handle');
+    if(!handle)return;
+    sub.setAttribute('draggable','true');
+    sub.addEventListener('dragstart',e=>{
+      if(!e.target.classList.contains('sub-drag-handle'))return;
+      dragType='sub';dragData={pi:sub.querySelector('[data-pi]').dataset.pi,si:sub.querySelector('[data-si]').dataset.si};
+      sub.classList.add('dragging-sub');e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','sub');
+    });
+    sub.addEventListener('dragend',clearDragStyles);
+    sub.addEventListener('dragover',e=>{
+      if(dragType!=='sub')return;
+      e.preventDefault();clearDragStyles();
+      el.querySelector('.dragging-sub')?.classList.add('dragging-sub');
+      const targetSi=sub.querySelector('[data-si]')?.dataset.si;
+      const targetPi=sub.querySelector('[data-pi]')?.dataset.pi;
+      if(targetPi===dragData.pi&&targetSi!==dragData.si)sub.classList.add('drag-over-sub');
+    });
+    sub.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(dragType!=='sub'||!dragData)return;
+      const srcPi=parseInt(dragData.pi),srcSi=parseInt(dragData.si);
+      const dstSi=parseInt(sub.querySelector('[data-si]')?.dataset.si);
+      const dstPi=parseInt(sub.querySelector('[data-pi]')?.dataset.pi);
+      if(srcPi!==dstPi||srcSi===dstSi)return;
+      const d=loadD();
+      const subs=d[boxId].parents[srcPi].subs;
+      const[moved]=subs.splice(srcSi,1);
+      subs.splice(dstSi,0,moved);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Parent groups — drag entire group with all subgroups and tasks
+  el.querySelectorAll('.h-parent').forEach(parent=>{
+    const handle=parent.querySelector('.parent-drag-handle');
+    if(!handle)return;
+    parent.setAttribute('draggable','true');
+    parent.addEventListener('dragstart',e=>{
+      if(!e.target.classList.contains('parent-drag-handle'))return;
+      dragType='parent';dragData={pi:parent.querySelector('[data-pi]').dataset.pi};
+      parent.classList.add('dragging-parent');e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','parent');
+    });
+    parent.addEventListener('dragend',clearDragStyles);
+    parent.addEventListener('dragover',e=>{
+      if(dragType!=='parent')return;
+      e.preventDefault();clearDragStyles();
+      el.querySelector('.dragging-parent')?.classList.add('dragging-parent');
+      const targetPi=parent.querySelector('[data-pi]')?.dataset.pi;
+      if(targetPi!==dragData.pi)parent.classList.add('drag-over-parent');
+    });
+    parent.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(dragType!=='parent'||!dragData)return;
+      const srcPi=parseInt(dragData.pi);
+      const dstPi=parseInt(parent.querySelector('[data-pi]')?.dataset.pi);
+      if(srcPi===dstPi)return;
+      const d=loadD();
+      const parents=d[boxId].parents;
+      const[moved]=parents.splice(srcPi,1);
+      parents.splice(dstPi,0,moved);
       saveD(d);renderBox(boxId);
     });
   });
@@ -1213,9 +1292,31 @@ function renderCTR(id, rows, data){
 
 function renderMS(id,rows,data){
   const el=document.getElementById(id);if(!el)return;
-  let html=`<div class="ms-scroll"><table class="ms-table"><thead><tr>
-    <th>Milestone</th><th style="width:52px">%</th><th style="width:90px">▶ Start</th><th style="width:90px">■ End</th><th style="width:80px">Start</th><th style="width:80px">End</th><th style="width:36px">Dur</th>
-  </tr></thead><tbody>`;
+  // Group rows by section
+  const sections={};
+  rows.forEach((row,i)=>{
+    const sec=row.section||'General';
+    if(!sections[sec])sections[sec]=[];
+    sections[sec].push({row,i});
+  });
+
+  let html=`<div class="ms-scroll">`;
+
+  Object.entries(sections).forEach(([secName,secRows])=>{
+    const secKey=id+'_sec_'+secName;
+    const secOpen=_sectionState[secKey]!==false; // default open
+    html+=`<div class="ms-section">
+      <div class="ms-section-header" data-sec="${secKey}" style="display:flex;align-items:center;gap:6px;padding:3px 4px;cursor:pointer;background:var(--bg3);border-radius:4px;margin-bottom:2px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2)">
+        <span class="h-chevron ${secOpen?'open':''}"  style="font-size:8px">▶</span>
+        ${secName}
+        <span style="font-size:9px;font-weight:400;opacity:.6">(${secRows.length})</span>
+        <span class="add-ms-row" data-id="${id}" data-section="${secName}" style="margin-left:auto;font-size:9px;color:var(--text3);cursor:pointer">+ add</span>
+        ${Object.keys(sections).length>1?`<span class="del-ms-section" data-id="${id}" data-section="${secName}" style="font-size:9px;color:#e74c3c;cursor:pointer">✕ section</span>`:''}
+      </div>`;
+    if(secOpen){
+      html+=`<table class="ms-table" style="margin-bottom:6px"><thead><tr>
+        <th>Milestone</th><th style="width:52px">%</th><th style="width:90px">▶ Start</th><th style="width:90px">■ End</th><th style="width:80px">Start</th><th style="width:80px">End</th><th style="width:36px">Dur</th>
+      </tr></thead><tbody>`;
 
   rows.forEach((row,i)=>{
     const n=daysDiff(row.end);const sn=daysDiff(row.start);const pct=row.pct||0;
@@ -1293,7 +1394,15 @@ function renderMS(id,rows,data){
     </tr>`;
   });
 
-  html+=`</tbody></table></div></div><span class="add-row" data-id="${id}">+ Add milestone</span>`;
+      html+=`</tbody></table>`;
+    }
+    html+=`</div>`;
+  });
+
+  html+=`<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+    <span class="add-row" data-id="${id}" data-section="${Object.keys(sections)[0]||'General'}">+ Add milestone</span>
+    <span class="add-ms-section" data-id="${id}" style="font-size:10px;color:var(--text3);cursor:pointer;padding:3px 4px">+ Add section</span>
+  </div></div>`;
   el.innerHTML=html;
 
   el.querySelectorAll('.ms-input').forEach(inp=>{
@@ -1373,10 +1482,43 @@ function renderMS(id,rows,data){
     });
   });
 
-  el.querySelectorAll('.add-row').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      const d=loadMS();d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false});
+  el.querySelectorAll('.add-row, .add-ms-row').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadMS();
+      const sec=btn.dataset.section||'General';
+      d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false,section:sec});
       saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.add-ms-section').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const secName=prompt('Section name (e.g. PV, BESS, Substation):','');
+      if(!secName)return;
+      const d=loadMS();
+      d[btn.dataset.id].push({name:'New milestone',start:'',end:'',dur:0,pct:0,started:false,section:secName.trim()});
+      saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.del-ms-section').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      if(!confirm('Delete all milestones in "'+btn.dataset.section+'" section?'))return;
+      const d=loadMS();
+      d[btn.dataset.id]=d[btn.dataset.id].filter(r=>r.section!==btn.dataset.section);
+      saveMS(d);renderMS(id,d[id],d);
+    });
+  });
+
+  el.querySelectorAll('.ms-section-header').forEach(hdr=>{
+    hdr.addEventListener('click',e=>{
+      if(e.target.classList.contains('add-ms-row')||e.target.classList.contains('del-ms-section'))return;
+      const key=hdr.dataset.sec;
+      _sectionState[key]=_sectionState[key]===false?true:false;
+      renderMS(id,loadMS()[id],loadMS());
     });
   });
 }
