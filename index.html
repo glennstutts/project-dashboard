@@ -666,13 +666,13 @@ function bindBox(boxId){
   });
 
   el.querySelectorAll('.parent-name').forEach(s=>{
-    s.addEventListener('blur',()=>{const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].label=s.textContent.trim();saveD(d)});
+    s.addEventListener('blur',()=>{const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].label=s.innerHTML.trim();saveD(d)});
     s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
   });
 
   el.querySelectorAll('.sub-name').forEach(s=>{
     s.addEventListener('blur',()=>{
-      const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].subs[parseInt(s.dataset.si)].label=s.textContent.trim();saveD(d);
+      const d=loadD();d[boxId].parents[parseInt(s.dataset.pi)].subs[parseInt(s.dataset.si)].label=s.innerHTML.trim();saveD(d);
     });
     s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
   });
@@ -698,7 +698,7 @@ function bindBox(boxId){
     s.addEventListener('blur',()=>{
       const d=loadD();const{pi,si,ti}=s.dataset;
       const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
-      task.text=s.textContent.trim();
+      task.text=s.innerHTML.trim();
       saveD(d);
     });
     s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
@@ -788,7 +788,7 @@ function bindBox(boxId){
     s.addEventListener('blur',()=>{
       const d=loadD();const{pi,si,ti,sti}=s.dataset;
       const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
-      if(task.subtasks&&task.subtasks[parseInt(sti)])task.subtasks[parseInt(sti)].text=s.textContent.trim();
+      if(task.subtasks&&task.subtasks[parseInt(sti)])task.subtasks[parseInt(sti)].text=s.innerHTML.trim();
       saveD(d);
     });
     s.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();s.blur()}});
@@ -1318,7 +1318,7 @@ function renderMS(id,rows,data){
         <th>Milestone</th><th style="width:52px">%</th><th style="width:90px">▶ Start</th><th style="width:90px">■ End</th><th style="width:80px">Start</th><th style="width:80px">End</th><th style="width:36px">Dur</th>
       </tr></thead><tbody>`;
 
-  rows.forEach((row,i)=>{
+  secRows.forEach(({row,i})=>{
     const n=daysDiff(row.end);const sn=daysDiff(row.start);const pct=row.pct||0;
 
     // Start countdown — live until started, frozen after
@@ -1532,6 +1532,7 @@ setSyncStatus('loading');
 fetchBin().then(() => {
   renderAll();
   setSyncStatus('idle');
+  setTimeout(equalizeRowHeights, 100);
 });
 
 function renderAll() {
@@ -1564,6 +1565,59 @@ document.addEventListener('selectionchange',()=>{
   }
   toolbar.classList.remove('visible');
 });
+
+// ── Equalize panel heights per row ──
+function equalizeRowHeights(){
+  // Row 1+2 (action boxes) — 8 boxes in 2 rows of 4
+  const actionIds=[
+    ['box-sameday','box-siteweek','box-vendorweek','box-lessons'],
+    ['box-company','box-backpocket','box-vendorbp','box-painpoints']
+  ];
+  actionIds.forEach(rowIds=>{
+    // Reset heights first
+    rowIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){el.style.minHeight='';el.closest('.box').style.minHeight='';}
+    });
+    // Find max height
+    let maxH=0;
+    rowIds.forEach(id=>{
+      const box=document.getElementById(id)?.closest('.box');
+      if(box) maxH=Math.max(maxH,box.offsetHeight);
+    });
+    // Apply to all
+    if(maxH>0) rowIds.forEach(id=>{
+      const box=document.getElementById(id)?.closest('.box');
+      if(box) box.style.minHeight=maxH+'px';
+    });
+  });
+
+  // Construction rows (span2 boxes) — each box spans 2 rows so just match same-row boxes
+  const conIds=['ms-es-con','ms-l2-con','ms-lu-con','ms-st-con'];
+  const ctrIds=['ms-es-ctr','ms-l2-ctr','ms-lu-ctr','ms-st-ctr'];
+  [conIds,ctrIds].forEach(rowIds=>{
+    rowIds.forEach(id=>{
+      const box=document.getElementById(id)?.closest('.box');
+      if(box) box.style.minHeight='';
+    });
+    let maxH=0;
+    rowIds.forEach(id=>{
+      const box=document.getElementById(id)?.closest('.box');
+      if(box) maxH=Math.max(maxH,box.offsetHeight);
+    });
+    if(maxH>0) rowIds.forEach(id=>{
+      const box=document.getElementById(id)?.closest('.box');
+      if(box) box.style.minHeight=maxH+'px';
+    });
+  });
+}
+
+// Run after every render
+const _origRenderBox=renderBox;
+function renderBox(boxId){
+  _origRenderBox(boxId);
+  setTimeout(equalizeRowHeights,50);
+}
 
 // Refresh countdowns every 60 seconds
 setInterval(()=>{
