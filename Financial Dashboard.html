@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<!-- Financial Dashboard v2026-03-16 -->
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Project Financial Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0f12;
+    --bg2: #13161b;
+    --bg3: #1a1e25;
+    --bg4: #222730;
+    --border: #2a2f3a;
+    --border2: #353c4a;
+    --text: #e8eaf0;
+    --text2: #9ca3b0;
+    --text3: #5c6478;
+    --green: #22c55e;
+    --green-dim: #16a34a22;
+    --yellow: #eab308;
+    --yellow-dim: #ca8a0422;
+    --red: #ef4444;
+    --red-dim: #dc262622;
+    --blue: #3b82f6;
+    --blue-dim: #2563eb22;
+    --accent: #6366f1;
+    --accent-dim: #4f46e522;
+    --orange: #f97316;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 13px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header h1 { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .sync-status { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); }
+  .btn { padding: 5px 12px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); cursor: pointer; font-size: 10px; font-family: 'Syne', sans-serif; }
+  .btn:hover { background: var(--bg4); color: var(--text); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-primary:hover { background: #4f46e5; }
+
+  /* ── Nav tabs ── */
+  .nav { display: flex; gap: 2px; padding: 10px 20px 0; background: var(--bg2); border-bottom: 1px solid var(--border); }
+  .nav-tab { padding: 8px 16px; font-size: 12px; font-weight: 600; color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; letter-spacing: .3px; }
+  .nav-tab:hover { color: var(--text2); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Main content ── */
+  .main { padding: 16px 20px; }
+
+  /* ── Portfolio summary cards ── */
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .summary-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .summary-card .label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+  .summary-card .value { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; }
+  .summary-card .sub { font-size: 10px; color: var(--text3); margin-top: 4px; }
+  .summary-card .delta { font-size: 10px; margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .delta.pos { color: var(--green); }
+  .delta.neg { color: var(--red); }
+
+  /* ── Project table ── */
+  .section-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 8px; }
+
+  .project-table { width: 100%; border-collapse: collapse; }
+  .project-table th { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .project-table th:first-child { text-align: left; }
+  .project-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .project-table td:first-child { text-align: left; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 12px; }
+  .project-table tr:hover td { background: var(--bg3); }
+  .project-table tr:last-child td { border-bottom: none; }
+
+  .project-name-cell { display: flex; align-items: center; gap: 8px; }
+  .project-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .health-badge { font-size: 9px; padding: 2px 6px; border-radius: 10px; font-family: 'DM Mono', monospace; font-weight: 500; }
+  .health-green { background: var(--green-dim); color: var(--green); }
+  .health-yellow { background: var(--yellow-dim); color: var(--yellow); }
+  .health-red { background: var(--red-dim); color: var(--red); }
+
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; width: 80px; display: inline-block; vertical-align: middle; margin-left: 6px; }
+  .progress-fill { height: 100%; border-radius: 2px; transition: width .3s; }
+
+  /* ── Project detail panel ── */
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .detail-card-title { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+  /* ── Staffing table ── */
+  .staff-table { width: 100%; border-collapse: collapse; }
+  .staff-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .staff-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 12px; vertical-align: middle; }
+  .staff-table tr:last-child td { border-bottom: none; }
+  .staff-table td:not(:first-child) { font-family: 'DM Mono', monospace; }
+  .alloc-input { width: 52px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 2px 5px; text-align: center; }
+  .alloc-input:focus { outline: none; border-color: var(--accent); }
+  .money-input { width: 100px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px; padding: 2px 6px; text-align: right; }
+  .money-input:focus { outline: none; border-color: var(--accent); }
+  .text-input { background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 11px; padding: 3px 7px; }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── Pay app log ── */
+  .payapp-row { display: grid; grid-template-columns: 80px 1fr 90px 90px 90px 80px 80px; gap: 6px; align-items: center; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .payapp-row:hover { background: var(--bg3); }
+  .payapp-header { font-size: 9px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); padding: 4px 10px; background: var(--bg3); border-bottom: 1px solid var(--border2); }
+  .payapp-status { font-size: 9px; padding: 2px 7px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+  .status-submitted { background: var(--blue-dim); color: var(--blue); }
+  .status-approved { background: var(--yellow-dim); color: var(--yellow); }
+  .status-paid { background: var(--green-dim); color: var(--green); }
+  .status-pending { background: var(--border); color: var(--text3); }
+
+  /* ── Change order log ── */
+  .co-table { width: 100%; border-collapse: collapse; }
+  .co-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .co-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 11px; vertical-align: middle; }
+  .co-table td:not(:first-child) { font-family: 'DM Mono', monospace; }
+  .co-table tr:last-child td { border-bottom: none; }
+  .co-status { font-size: 9px; padding: 2px 6px; border-radius: 10px; }
+
+  /* ── Budget breakdown ── */
+  .budget-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-label { flex: 1; font-size: 12px; }
+  .budget-bar-wrap { width: 120px; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .budget-bar-fill { height: 100%; border-radius: 3px; }
+  .budget-amount { font-family: 'DM Mono', monospace; font-size: 11px; min-width: 90px; text-align: right; }
+  .budget-pct { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); min-width: 36px; text-align: right; }
+
+  /* ── Inline editable ── */
+  [contenteditable] { outline: none; border-radius: 3px; padding: 1px 3px; }
+  [contenteditable]:hover { background: var(--bg3); }
+  [contenteditable]:focus { background: var(--bg3); box-shadow: 0 0 0 1px var(--accent); }
+
+  /* ── Add row button ── */
+  .add-row-btn { font-size: 10px; color: var(--text3); cursor: pointer; padding: 6px 10px; display: block; text-align: left; }
+  .add-row-btn:hover { color: var(--accent); }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,.7); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px; padding: 20px; width: 520px; max-height: 80vh; overflow-y: auto; }
+  .modal h3 { font-size: 13px; font-weight: 700; margin-bottom: 14px; }
+  .form-row { margin-bottom: 10px; }
+  .form-row label { font-size: 10px; color: var(--text3); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .form-row input, .form-row select, .form-row textarea { width: 100%; padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 12px; }
+  .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); }
+  .form-row select option { background: var(--bg2); }
+  .modal-btns { display: flex; gap: 8px; margin-top: 14px; }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 30px; color: var(--text3); font-size: 12px; }
+
+  /* ── Tabs within sections ── */
+  .sub-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+  .sub-tab { font-size: 11px; padding: 4px 12px; border-radius: 4px; cursor: pointer; color: var(--text3); border: 1px solid transparent; }
+  .sub-tab:hover { color: var(--text2); }
+  .sub-tab.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+  .project-colors { --c0:#6366f1;--c1:#22c55e;--c2:#f97316;--c3:#eab308;--c4:#3b82f6;--c5:#ec4899; }
+  .page { display: none; }
+  .page.active { display: block; }
+</style>
+</head>
+<body class="project-colors">
+
+<!-- Header -->
+<div class="header">
+  <h1>💰 Project Financial Dashboard</h1>
+  <div class="header-right">
+    <span class="sync-status" id="sync-status">● Loading...</span>
+    <button class="btn" onclick="downloadBackup()">💾 Backup</button>
+    <button class="btn btn-primary" onclick="openModal('add-project')">+ Project</button>
+  </div>
+</div>
+
+<!-- Nav -->
+<div class="nav">
+  <div class="nav-tab active" onclick="showPage('portfolio')">Portfolio</div>
+  <div class="nav-tab" onclick="showPage('staffing')">Staffing</div>
+  <div class="nav-tab" id="project-tab" style="display:none" onclick="showPage('project')">— Project</div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: PORTFOLIO
+════════════════════════════════════════════ -->
+<div class="main page active" id="page-portfolio">
+
+  <!-- Summary cards -->
+  <div class="summary-grid" id="summary-cards"></div>
+
+  <!-- Project table -->
+  <div class="section-title">All Projects</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+    <table class="project-table" id="portfolio-table">
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>EPC Contract</th>
+          <th>Approved COs</th>
+          <th>Total Contract</th>
+          <th>Invoiced</th>
+          <th>Paid</th>
+          <th>Remaining</th>
+          <th>Labor MTD</th>
+          <th>% Complete</th>
+          <th>Health</th>
+        </tr>
+      </thead>
+      <tbody id="portfolio-tbody"></tbody>
+    </table>
+  </div>
+
+  <!-- Owner costs summary -->
+  <div class="section-title">Owner Cost Summary</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:16px">
+    <div id="owner-cost-summary"></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: STAFFING
+════════════════════════════════════════════ -->
+<div class="main page" id="page-staffing">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="section-title" style="margin-bottom:0">Site Representatives</div>
+    <button class="btn btn-primary" onclick="openModal('add-staff')">+ Add Person</button>
+  </div>
+
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+    <table class="staff-table" id="staff-master-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Monthly Rate ($)</th>
+          <th>Total Allocated %</th>
+          <th>Monthly Cost Allocated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="staff-tbody"></tbody>
+    </table>
+    <div class="add-row-btn" onclick="openModal('add-staff')">+ Add site rep</div>
+  </div>
+
+  <div class="section-title">Allocation by Project</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+    <div id="alloc-matrix"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: PROJECT DETAIL
+════════════════════════════════════════════ -->
+<div class="main page" id="page-project">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+    <div style="width:10px;height:10px;border-radius:50%" id="proj-detail-dot"></div>
+    <h2 style="font-size:16px;font-weight:800" id="proj-detail-name">Project</h2>
+    <span style="font-size:11px;color:var(--text3)" id="proj-detail-meta"></span>
+  </div>
+
+  <div class="sub-tabs">
+    <div class="sub-tab active" onclick="showSubTab('overview')">Overview</div>
+    <div class="sub-tab" onclick="showSubTab('payapps')">Pay Apps</div>
+    <div class="sub-tab" onclick="showSubTab('changeorders')">Change Orders</div>
+    <div class="sub-tab" onclick="showSubTab('equipment')">Equipment</div>
+    <div class="sub-tab" onclick="showSubTab('ownercosts')">Owner Costs</div>
+    <div class="sub-tab" onclick="showSubTab('staffing')">Staffing</div>
+  </div>
+
+  <!-- Overview -->
+  <div id="sub-overview">
+    <div class="detail-grid" id="proj-overview-grid" style="grid-template-columns:1fr 1fr 1fr"></div>
+  </div>
+
+  <!-- Pay Apps -->
+  <div id="sub-payapps" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="section-title" style="margin-bottom:0">Pay Application Log</div>
+      <button class="btn btn-primary" onclick="openModal('add-payapp')">+ Add Pay App</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div class="payapp-row payapp-header">
+        <div>App #</div><div>Description</div><div style="text-align:right">Amount</div>
+        <div style="text-align:right">Retainage</div><div style="text-align:right">Net Due</div>
+        <div>Status</div><div>Date</div>
+      </div>
+      <div id="payapp-list"></div>
+    </div>
+  </div>
+
+  <!-- Change Orders -->
+  <div id="sub-changeorders" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="section-title" style="margin-bottom:0">Change Orders</div>
+      <button class="btn btn-primary" onclick="openModal('add-co')">+ Add CO</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="co-table" id="co-table">
+        <thead><tr><th>#</th><th>Description</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+        <tbody id="co-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Equipment / Procurement -->
+  <div id="sub-equipment" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="section-title" style="margin-bottom:0">Equipment &amp; Procurement</div>
+      <button class="btn btn-primary" onclick="openModal('add-equipment')">+ Add Item</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:12px">
+      <table class="co-table" id="equip-table">
+        <thead><tr>
+          <th>Item / Description</th>
+          <th>Vendor</th>
+          <th>PO Value</th>
+          <th>Invoiced</th>
+          <th>Paid</th>
+          <th>Status</th>
+          <th>Expected</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="equip-tbody"></tbody>
+      </table>
+      <div class="add-row-btn" onclick="openModal('add-equipment')">+ Add equipment / procurement item</div>
+    </div>
+    <div id="equip-summary" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+  </div>
+
+  <!-- Owner Costs -->
+  <div id="sub-ownercosts" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="section-title" style="margin-bottom:0">Owner Costs</div>
+      <button class="btn btn-primary" onclick="openModal('add-ownercost')">+ Add Cost</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="co-table" id="oc-table">
+        <thead><tr><th>Category</th><th>Vendor / Description</th><th>Budget</th><th>Actual</th><th>Date</th><th></th></tr></thead>
+        <tbody id="oc-tbody"></tbody>
+      </table>
+      <div class="add-row-btn" onclick="openModal('add-ownercost')">+ Add owner cost</div>
+    </div>
+  </div>
+
+  <!-- Project Staffing -->
+  <div id="sub-staffing" style="display:none">
+    <div class="section-title">Site Rep Allocation — This Project</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="staff-table" id="proj-staff-table">
+        <thead><tr><th>Name</th><th>% Allocated</th><th>Monthly Rate</th><th>Monthly Cost</th></tr></thead>
+        <tbody id="proj-staff-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════ -->
+
+<!-- Add Project Modal -->
+<div class="modal-overlay" id="modal-add-project">
+  <div class="modal">
+    <h3>Add Project</h3>
+    <div class="form-row"><label>Project Name</label><input id="m-proj-name" placeholder="Eagle Springs"/></div>
+    <div class="form-row"><label>EPC Contract Value ($)</label><input id="m-proj-epc" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Owner Budget ($)</label><input id="m-proj-budget" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Status</label>
+      <select id="m-proj-status">
+        <option value="active">Active — Construction</option>
+        <option value="pre-con">Pre-Construction</option>
+        <option value="closeout">Closeout</option>
+        <option value="complete">Complete</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Color</label>
+      <select id="m-proj-color">
+        <option value="#6366f1">Indigo</option><option value="#22c55e">Green</option>
+        <option value="#f97316">Orange</option><option value="#eab308">Yellow</option>
+        <option value="#3b82f6">Blue</option><option value="#ec4899">Pink</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveProject()">Add Project</button>
+      <button class="btn" onclick="closeModal('add-project')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Staff Modal -->
+<div class="modal-overlay" id="modal-add-staff">
+  <div class="modal">
+    <h3>Add Site Representative</h3>
+    <div class="form-row"><label>Full Name</label><input id="m-staff-name" placeholder="Jane Smith"/></div>
+    <div class="form-row"><label>Monthly Loaded Rate ($)</label><input id="m-staff-rate" type="number" placeholder="8500"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveStaff()">Add</button>
+      <button class="btn" onclick="closeModal('add-staff')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Pay App Modal -->
+<div class="modal-overlay" id="modal-add-payapp">
+  <div class="modal">
+    <h3>Add Pay Application</h3>
+    <div class="form-row"><label>App Number</label><input id="m-pa-num" placeholder="1"/></div>
+    <div class="form-row"><label>Description / Period</label><input id="m-pa-desc" placeholder="March 2026 — Site Work 30%"/></div>
+    <div class="form-row"><label>Gross Amount ($)</label><input id="m-pa-amount" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Retainage % (typically 10%)</label><input id="m-pa-ret" type="number" placeholder="10" value="10"/></div>
+    <div class="form-row"><label>Status</label>
+      <select id="m-pa-status">
+        <option value="pending">Pending Review</option>
+        <option value="submitted">Submitted</option>
+        <option value="approved">Approved</option>
+        <option value="paid">Paid</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Date Submitted</label><input id="m-pa-date" type="date"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="savePayApp()">Add Pay App</button>
+      <button class="btn" onclick="closeModal('add-payapp')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Change Order Modal -->
+<div class="modal-overlay" id="modal-add-co">
+  <div class="modal">
+    <h3>Add Change Order</h3>
+    <div class="form-row"><label>CO Number</label><input id="m-co-num" placeholder="CO-001"/></div>
+    <div class="form-row"><label>Description</label><input id="m-co-desc" placeholder="Describe scope change..."/></div>
+    <div class="form-row"><label>Amount ($)</label><input id="m-co-amount" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Status</label>
+      <select id="m-co-status">
+        <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Date</label><input id="m-co-date" type="date"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveChangeOrder()">Add CO</button>
+      <button class="btn" onclick="closeModal('add-co')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Owner Cost Modal -->
+<!-- Add Equipment Modal -->
+<div class="modal-overlay" id="modal-add-equipment">
+  <div class="modal">
+    <h3>Add Equipment / Procurement Item</h3>
+    <div class="form-row"><label>Item Description</label><input id="m-eq-desc" placeholder="Solar panels — 550W bifacial modules"/></div>
+    <div class="form-row"><label>Category</label>
+      <select id="m-eq-cat">
+        <option>PV Modules</option>
+        <option>Inverters / BESS</option>
+        <option>Racking / Mounting</option>
+        <option>Electrical / BOS</option>
+        <option>Substation Equipment</option>
+        <option>Transformers / MV</option>
+        <option>SCADA / Controls</option>
+        <option>Other Equipment</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Vendor</label><input id="m-eq-vendor" placeholder="Vendor name"/></div>
+    <div class="form-row"><label>PO / Contract Value ($)</label><input id="m-eq-po" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Amount Invoiced ($)</label><input id="m-eq-invoiced" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Amount Paid ($)</label><input id="m-eq-paid" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Status</label>
+      <select id="m-eq-status">
+        <option value="ordered">Ordered</option>
+        <option value="in-transit">In Transit</option>
+        <option value="delivered">Delivered</option>
+        <option value="installed">Installed</option>
+        <option value="pending">Pending PO</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Expected Delivery</label><input id="m-eq-date" type="date"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveEquipment()">Add Item</button>
+      <button class="btn" onclick="closeModal('add-equipment')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-add-ownercost">
+  <div class="modal">
+    <h3>Add Owner Cost</h3>
+    <div class="form-row"><label>Category</label>
+      <select id="m-oc-cat">
+        <option>Legal</option><option>Permitting</option><option>Engineering</option>
+        <option>Interconnection</option><option>Survey / Geotech</option>
+        <option>Environmental</option><option>Insurance</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Vendor / Description</label><input id="m-oc-desc" placeholder="Vendor name or description"/></div>
+    <div class="form-row"><label>Budget ($)</label><input id="m-oc-budget" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Actual Spent ($)</label><input id="m-oc-actual" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Date</label><input id="m-oc-date" type="date"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveOwnerCost()">Add Cost</button>
+      <button class="btn" onclick="closeModal('add-ownercost')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STORAGE — JSONBin
+// ═══════════════════════════════════════
+const JSONBIN_KEY = '$2a$10$86feWKOrdTzcBxCyLxYqBubytpxcA5SeLRPSpG3w1jKR5N6dNRGxq';
+const JSONBIN_URL_FIN = 'https://api.jsonbin.io/v3/b'; // Will create new bin on first save
+
+let _finCache = null;
+let _finBinId = localStorage.getItem('fin_bin_id') || null;
+let _saveTimer = null;
+let _isDirty = false;
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function fmt(n, decimals=0){
+  if(!n && n!==0) return '—';
+  return '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
+}
+
+function pct(a, b){ if(!b) return 0; return Math.round(a/b*100); }
+
+function defaultData(){
+  return {
+    projects: [
+      {id:'eagle-springs', name:'Eagle Springs', color:'#6366f1', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'lupinus-2',     name:'Lupinus 2',     color:'#22c55e', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'lupinus',       name:'Lupinus',       color:'#f97316', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'staccato',      name:'Staccato',      color:'#eab308', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'gaia',          name:'Gaia',          color:'#3b82f6', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'midpoint',      name:'Midpoint',      color:'#ec4899', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+    ],
+    staff: [],
+    allocations: {} // {staffId: {projectId: pct}}
+  };
+}
+
+function setSyncStatus(s){
+  const el=document.getElementById('sync-status');
+  if(!el)return;
+  const states={
+    idle:{text:'● Synced',color:'#22c55e'},
+    saving:{text:'↻ Saving...',color:'#eab308'},
+    saved:{text:'✓ Saved',color:'#22c55e'},
+    offline:{text:'⚠ Save failed',color:'#ef4444'},
+    loading:{text:'↻ Loading...',color:'#eab308'},
+    dirty:{text:'● Unsaved',color:'#f97316'},
+  };
+  const st=states[s]||states.idle;
+  el.textContent=st.text; el.style.color=st.color;
+}
+
+async function createBin(data){
+  const r=await fetch('https://api.jsonbin.io/v3/b',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY,'X-Bin-Private':'true'},
+    body:JSON.stringify(data)
+  });
+  const j=await r.json();
+  if(j.metadata?.id){
+    localStorage.setItem('fin_bin_id', j.metadata.id);
+    _finBinId=j.metadata.id;
+    console.log('Created financial bin:', _finBinId);
+    return j.metadata.id;
+  }
+  throw new Error('Failed to create bin');
+}
+
+async function saveFin(data){
+  _finCache=data;
+  localStorage.setItem('fin_cache', JSON.stringify(data));
+  _isDirty=true; setSyncStatus('saving');
+  try {
+    if(!_finBinId){ await createBin(data); }
+    else {
+      const r=await fetch(`https://api.jsonbin.io/v3/b/${_finBinId}`,{
+        method:'PUT',
+        headers:{'Content-Type':'application/json','X-Access-Key':JSONBIN_KEY},
+        body:JSON.stringify(data)
+      });
+      if(!r.ok) throw new Error('Save returned '+r.status);
+    }
+    _isDirty=false; setSyncStatus('saved');
+    setTimeout(()=>setSyncStatus('idle'),2000);
+  } catch(e){
+    console.warn('Save failed:',e);
+    setSyncStatus('offline');
+  }
+}
+
+function scheduleSave(){
+  _isDirty=true; setSyncStatus('dirty');
+  localStorage.setItem('fin_cache', JSON.stringify(_finCache));
+  if(_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>{ if(_finCache) saveFin(_finCache); _saveTimer=null; }, 400);
+}
+
+async function loadFin(){
+  setSyncStatus('loading');
+  try {
+    if(_finBinId){
+      const r=await fetch(`https://api.jsonbin.io/v3/b/${_finBinId}/latest`,{
+        headers:{'X-Access-Key':JSONBIN_KEY}
+      });
+      if(r.ok){
+        const j=await r.json();
+        _finCache=j.record||defaultData();
+        setSyncStatus('idle'); return _finCache;
+      }
+    }
+  } catch(e){ console.warn('Load failed, using local cache'); }
+  // Fallback to localStorage
+  const local=localStorage.getItem('fin_cache');
+  _finCache=local?JSON.parse(local):defaultData();
+  setSyncStatus('idle');
+  return _finCache;
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+let _currentPage='portfolio';
+let _currentProject=null;
+let _currentSubTab='overview';
+
+function showPage(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(el=>{
+    if(el.textContent.toLowerCase().includes(p)) el.classList.add('active');
+  });
+  _currentPage=p;
+}
+
+function showSubTab(t){
+  document.querySelectorAll('[id^="sub-"]').forEach(el=>el.style.display='none');
+  document.getElementById('sub-'+t).style.display='block';
+  document.querySelectorAll('.sub-tab').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.sub-tab').forEach(el=>{
+    if(el.textContent.toLowerCase()===t.toLowerCase()||
+       (t==='ownercosts'&&el.textContent.toLowerCase().includes('owner'))||
+       (t==='changeorders'&&el.textContent.toLowerCase().includes('change'))||
+       (t==='payapps'&&el.textContent.toLowerCase().includes('pay')))
+      el.classList.add('active');
+  });
+  _currentSubTab=t;
+  renderProjectDetail(_currentProject);
+}
+
+function openProjectDetail(projId){
+  _currentProject=projId;
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj)return;
+  const tab=document.getElementById('project-tab');
+  tab.style.display='flex'; tab.textContent=proj.name;
+  document.querySelectorAll('.nav-tab').forEach(el=>el.classList.remove('active'));
+  tab.classList.add('active');
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-project').classList.add('active');
+  _currentPage='project'; _currentSubTab='overview';
+  showSubTab('overview');
+}
+
+// ═══════════════════════════════════════
+// PORTFOLIO RENDER
+// ═══════════════════════════════════════
+function projectTotals(p){
+  const approvedCOs=(p.changeOrders||[]).filter(c=>c.status==='approved').reduce((s,c)=>s+Number(c.amount||0),0);
+  const totalContract=Number(p.epcContract||0)+approvedCOs;
+  const invoiced=(p.payApps||[]).reduce((s,a)=>s+Number(a.amount||0),0);
+  const paid=(p.payApps||[]).filter(a=>a.status==='paid').reduce((s,a)=>s+Number(a.amount||0),0);
+  const retainageHeld=(p.payApps||[]).filter(a=>a.status!=='paid').reduce((s,a)=>s+(Number(a.amount||0)*Number(a.retPct||10)/100),0);
+  const netPaid=paid;
+  const remaining=totalContract-invoiced;
+  const completePct=totalContract>0?Math.round(invoiced/totalContract*100):0;
+  const ocActual=(p.ownerCosts||[]).reduce((s,c)=>s+Number(c.actual||0),0);
+  // Labor from staff allocations
+  let laborMTD=0;
+  if(_finCache.staff){
+    _finCache.staff.forEach(s=>{
+      const alloc=(_finCache.allocations[s.id]||{})[p.id]||0;
+      laborMTD+=Number(s.rate||0)*(alloc/100);
+    });
+  }
+  const equipPO=(p.equipment||[]).reduce((s,e)=>s+Number(e.po||0),0);
+  const equipInvoiced=(p.equipment||[]).reduce((s,e)=>s+Number(e.invoiced||0),0);
+  const equipPaid=(p.equipment||[]).reduce((s,e)=>s+Number(e.paid||0),0);
+  return {approvedCOs,totalContract,invoiced,paid,remaining,completePct,ocActual,laborMTD,retainageHeld,equipPO,equipInvoiced,equipPaid};
+}
+
+function healthColor(p, t){
+  if(!t.totalContract) return 'health-yellow';
+  if(t.completePct>=100) return 'health-green';
+  if(t.invoiced>t.totalContract) return 'health-red';
+  return 'health-green';
+}
+
+function renderPortfolio(){
+  const d=_finCache;
+  let totalEPC=0, totalInvoiced=0, totalPaid=0, totalLabor=0;
+  d.projects.forEach(p=>{
+    const t=projectTotals(p);
+    totalEPC+=t.totalContract; totalInvoiced+=t.invoiced; totalPaid+=t.paid; totalLabor+=t.laborMTD;
+  });
+
+  // Summary cards
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="summary-card">
+      <div class="label">Total EPC Value</div>
+      <div class="value" style="font-size:18px">${fmt(totalEPC)}</div>
+      <div class="sub">${d.projects.length} active projects</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Invoiced</div>
+      <div class="value" style="font-size:18px;color:var(--yellow)">${fmt(totalInvoiced)}</div>
+      <div class="sub">${totalEPC>0?pct(totalInvoiced,totalEPC):0}% of total contract</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Total Paid</div>
+      <div class="value" style="font-size:18px;color:var(--green)">${fmt(totalPaid)}</div>
+      <div class="sub">${fmt(totalInvoiced-totalPaid)} outstanding</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">Labor Cost MTD</div>
+      <div class="value" style="font-size:18px;color:var(--accent)">${fmt(totalLabor)}</div>
+      <div class="sub">${d.staff?.length||0} site reps allocated</div>
+    </div>`;
+
+  // Project table
+  let tbody='';
+  d.projects.forEach(p=>{
+    const t=projectTotals(p);
+    const hc=healthColor(p,t);
+    const barColor=t.completePct>90?'#22c55e':t.completePct>60?'#eab308':'#3b82f6';
+    tbody+=`<tr onclick="openProjectDetail('${p.id}')" style="cursor:pointer">
+      <td><div class="project-name-cell">
+        <div class="project-dot" style="background:${p.color}"></div>
+        ${p.name}
+        <span style="font-size:9px;color:var(--text3);font-weight:400">${p.status}</span>
+      </div></td>
+      <td>${fmt(p.epcContract)}</td>
+      <td style="color:${t.approvedCOs>0?'var(--orange)':'var(--text3)'}">${t.approvedCOs>0?'+'+fmt(t.approvedCOs):'—'}</td>
+      <td style="font-weight:600">${fmt(t.totalContract)}</td>
+      <td>${fmt(t.invoiced)}</td>
+      <td style="color:var(--green)">${fmt(t.paid)}</td>
+      <td style="color:var(--text3)">${fmt(t.remaining)}</td>
+      <td style="color:var(--accent)">${fmt(t.laborMTD)}</td>
+      <td>
+        ${t.completePct}%
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(t.completePct,100)}%;background:${barColor}"></div></div>
+      </td>
+      <td><span class="health-badge ${hc}">${hc==='health-green'?'On Track':hc==='health-yellow'?'Needs Setup':'At Risk'}</span></td>
+    </tr>`;
+  });
+  document.getElementById('portfolio-tbody').innerHTML=tbody||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">No projects yet — click + Project to add one</td></tr>';
+
+  // Owner cost summary
+  let ocHtml='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
+  const ocCats={};
+  d.projects.forEach(p=>{
+    (p.ownerCosts||[]).forEach(c=>{
+      if(!ocCats[c.category]) ocCats[c.category]={budget:0,actual:0};
+      ocCats[c.category].budget+=Number(c.budget||0);
+      ocCats[c.category].actual+=Number(c.actual||0);
+    });
+  });
+  if(Object.keys(ocCats).length===0){
+    ocHtml+='<div style="grid-column:span 3;text-align:center;color:var(--text3);font-size:12px;padding:10px">No owner costs entered yet — open a project to add costs</div>';
+  } else {
+    Object.entries(ocCats).forEach(([cat,v])=>{
+      const p=v.budget>0?Math.min(Math.round(v.actual/v.budget*100),100):0;
+      const color=p>90?'var(--red)':p>70?'var(--yellow)':'var(--green)';
+      ocHtml+=`<div style="background:var(--bg3);border-radius:6px;padding:10px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${cat}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:13px">${fmt(v.actual)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.budget)}</span></div>
+        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px"><div style="width:${p}%;height:100%;background:${color};border-radius:2px"></div></div>
+      </div>`;
+    });
+  }
+  ocHtml+='</div>';
+  document.getElementById('owner-cost-summary').innerHTML=ocHtml;
+}
+
+// ═══════════════════════════════════════
+// STAFFING RENDER
+// ═══════════════════════════════════════
+function renderStaffing(){
+  const d=_finCache;
+  const staff=d.staff||[];
+  const projects=d.projects||[];
+
+  // Master staff table
+  let tbody='';
+  staff.forEach(s=>{
+    const allocs=d.allocations[s.id]||{};
+    const totalPct=Object.values(allocs).reduce((a,b)=>a+Number(b||0),0);
+    const monthlyCost=Number(s.rate||0)*(totalPct/100);
+    const pctColor=totalPct>100?'var(--red)':totalPct===100?'var(--green)':'var(--yellow)';
+    tbody+=`<tr>
+      <td><span contenteditable="true" onblur="updateStaffName('${s.id}',this.textContent)">${s.name}</span></td>
+      <td><input class="money-input" type="number" value="${s.rate||0}" onchange="updateStaffRate('${s.id}',this.value)" style="width:90px"/></td>
+      <td style="color:${pctColor};font-family:'DM Mono',monospace">${totalPct}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
+      <td><span onclick="deleteStaff('${s.id}')" style="cursor:pointer;color:var(--text3);font-size:11px" title="Remove">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('staff-tbody').innerHTML=tbody||'<tr><td colspan="5" class="empty-state">No staff added yet</td></tr>';
+
+  // Allocation matrix
+  if(staff.length===0||projects.length===0){
+    document.getElementById('alloc-matrix').innerHTML='<div class="empty-state">Add staff and projects to see the allocation matrix</div>';
+    return;
+  }
+
+  let html=`<table class="staff-table" style="width:100%"><thead><tr>
+    <th>Name</th>
+    <th style="font-family:'DM Mono',monospace">Rate/mo</th>
+    ${projects.map(p=>`<th style="color:${p.color}">${p.name}</th>`).join('')}
+    <th>Total %</th>
+    <th>Monthly Cost</th>
+  </tr></thead><tbody>`;
+
+  staff.forEach(s=>{
+    const allocs=d.allocations[s.id]||{};
+    const totalPct=projects.reduce((sum,p)=>sum+Number(allocs[p.id]||0),0);
+    const monthlyCost=Number(s.rate||0)*(totalPct/100);
+    const pctColor=totalPct>100?'var(--red)':totalPct===100?'var(--green)':'var(--yellow)';
+    html+=`<tr>
+      <td style="font-weight:600">${s.name}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${fmt(s.rate)}</td>
+      ${projects.map(p=>`<td>
+        <input class="alloc-input" type="number" min="0" max="100" value="${allocs[p.id]||0}"
+          onchange="updateAlloc('${s.id}','${p.id}',this.value)"
+          placeholder="0" style="width:50px"/>
+        <span style="font-size:9px;color:var(--text3)">%</span>
+      </td>`).join('')}
+      <td style="color:${pctColor};font-family:'DM Mono',monospace;font-weight:600">${totalPct}%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
+    </tr>`;
+  });
+
+  // Totals row
+  html+=`<tr style="background:var(--bg3);font-weight:700">
+    <td colspan="2" style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:.4px">Total per project</td>
+    ${projects.map(p=>{
+      const projTotal=staff.reduce((sum,s)=>{
+        const a=(_finCache.allocations[s.id]||{})[p.id]||0;
+        return sum+Number(s.rate||0)*(a/100);
+      },0);
+      return `<td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(projTotal)}</td>`;
+    }).join('')}
+    <td></td>
+    <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(staff.reduce((sum,s)=>{
+      const allocs=d.allocations[s.id]||{};
+      const tp=projects.reduce((a,p)=>a+Number(allocs[p.id]||0),0);
+      return sum+Number(s.rate||0)*(tp/100);
+    },0))}</td>
+  </tr>`;
+
+  html+='</tbody></table>';
+  document.getElementById('alloc-matrix').innerHTML=html;
+}
+
+// ═══════════════════════════════════════
+// PROJECT DETAIL RENDER
+// ═══════════════════════════════════════
+function renderProjectDetail(projId){
+  if(!projId)return;
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj)return;
+  const t=projectTotals(proj);
+
+  document.getElementById('proj-detail-name').textContent=proj.name;
+  document.getElementById('proj-detail-dot').style.background=proj.color;
+  document.getElementById('proj-detail-meta').textContent=`${proj.status} · ${t.completePct}% invoiced`;
+
+  if(_currentSubTab==='overview') renderOverview(proj, t);
+  else if(_currentSubTab==='payapps') renderPayApps(proj);
+  else if(_currentSubTab==='changeorders') renderChangeOrders(proj);
+  else if(_currentSubTab==='equipment') renderEquipment(proj);
+  else if(_currentSubTab==='ownercosts') renderOwnerCosts(proj);
+  else if(_currentSubTab==='staffing') renderProjStaffing(proj);
+}
+
+function renderOverview(proj, t){
+  const approvedCOs=(proj.changeOrders||[]).filter(c=>c.status==='approved').length;
+  const pendingCOs=(proj.changeOrders||[]).filter(c=>c.status==='pending').length;
+  const ocBudget=(proj.ownerCosts||[]).reduce((s,c)=>s+Number(c.budget||0),0);
+  const ocActual=(proj.ownerCosts||[]).reduce((s,c)=>s+Number(c.actual||0),0);
+
+  document.getElementById('proj-overview-grid').innerHTML=`
+    <!-- EPC Contract -->
+    <div class="detail-card">
+      <div class="detail-card-title">EPC Contract
+        <span onclick="editField('${proj.id}','epcContract','EPC Contract Value')" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Base Contract</div>
+        <div class="budget-amount">${fmt(proj.epcContract)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label" style="color:var(--orange)">Approved COs (${approvedCOs})</div>
+        <div class="budget-amount" style="color:var(--orange)">+${fmt(t.approvedCOs)}</div>
+      </div>
+      ${pendingCOs>0?`<div class="budget-row">
+        <div class="budget-label" style="color:var(--text3)">Pending COs (${pendingCOs})</div>
+        <div class="budget-amount" style="color:var(--text3)">TBD</div>
+      </div>`:''}
+      <div class="budget-row" style="border-top:1px solid var(--border2);margin-top:4px;padding-top:8px">
+        <div class="budget-label" style="font-weight:700">Total Contract</div>
+        <div class="budget-amount" style="font-weight:700;color:var(--text)">${fmt(t.totalContract)}</div>
+      </div>
+    </div>
+
+    <!-- Pay App Status -->
+    <div class="detail-card">
+      <div class="detail-card-title">Pay App Status</div>
+      <div class="budget-row">
+        <div class="budget-label">Total Invoiced</div>
+        <div class="budget-amount" style="color:var(--yellow)">${fmt(t.invoiced)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Total Paid</div>
+        <div class="budget-amount" style="color:var(--green)">${fmt(t.paid)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Outstanding</div>
+        <div class="budget-amount" style="color:var(--text3)">${fmt(t.invoiced-t.paid)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Remaining Contract</div>
+        <div class="budget-amount">${fmt(t.remaining)}</div>
+      </div>
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px">
+          <span>${t.completePct}% invoiced</span><span>${fmt(t.totalContract)} total</span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div style="width:${Math.min(t.completePct,100)}%;height:100%;background:${t.completePct>90?'var(--green)':'var(--blue)'};border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Owner Costs -->
+    <div class="detail-card">
+      <div class="detail-card-title">Owner Costs
+        <span onclick="showSubTab('ownercosts')" style="cursor:pointer;font-size:9px;color:var(--accent)">View all</span>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Budget</div>
+        <div class="budget-amount">${fmt(ocBudget)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Actual Spent</div>
+        <div class="budget-amount" style="color:${ocActual>ocBudget?'var(--red)':'var(--green)'}">${fmt(ocActual)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Remaining</div>
+        <div class="budget-amount">${fmt(ocBudget-ocActual)}</div>
+      </div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="detail-card">
+      <div class="detail-card-title">Equipment &amp; Procurement
+        <span onclick="showSubTab('equipment')" style="cursor:pointer;font-size:9px;color:var(--accent)">View all</span>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Total PO Value</div>
+        <div class="budget-amount">${fmt(t.equipPO)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Invoiced</div>
+        <div class="budget-amount" style="color:var(--yellow)">${fmt(t.equipInvoiced)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Paid</div>
+        <div class="budget-amount" style="color:var(--green)">${fmt(t.equipPaid)}</div>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Outstanding</div>
+        <div class="budget-amount" style="color:var(--text3)">${fmt(t.equipInvoiced-t.equipPaid)}</div>
+      </div>
+    </div>
+
+    <!-- Staffing -->
+    <div class="detail-card">
+      <div class="detail-card-title">Labor — Site Reps
+        <span onclick="showSubTab('staffing')" style="cursor:pointer;font-size:9px;color:var(--accent)">View all</span>
+      </div>
+      <div class="budget-row">
+        <div class="budget-label">Monthly Labor Cost</div>
+        <div class="budget-amount" style="color:var(--accent)">${fmt(t.laborMTD)}</div>
+      </div>
+      ${(_finCache.staff||[]).filter(s=>((_finCache.allocations[s.id]||{})[proj.id]||0)>0).map(s=>{
+        const alloc=(_finCache.allocations[s.id]||{})[proj.id]||0;
+        const cost=Number(s.rate||0)*(alloc/100);
+        return `<div class="budget-row">
+          <div class="budget-label" style="font-size:11px">${s.name} <span style="color:var(--text3)">${alloc}%</span></div>
+          <div class="budget-amount" style="font-size:11px">${fmt(cost)}</div>
+        </div>`;
+      }).join('')||'<div style="color:var(--text3);font-size:11px;padding:8px 0">No staff allocated — go to Staffing tab</div>'}
+    </div>
+  `;
+}
+
+function renderPayApps(proj){
+  const apps=proj.payApps||[];
+  const CYCLE=['pending','submitted','approved','paid'];
+  let html='';
+  if(apps.length===0){ html='<div class="empty-state">No pay apps yet — click + Add Pay App</div>'; }
+  else {
+    apps.forEach((a,i)=>{
+      const net=Number(a.amount||0)*(1-Number(a.retPct||10)/100);
+      html+=`<div class="payapp-row">
+        <div style="font-family:'DM Mono',monospace;font-weight:600">App #${a.num||i+1}</div>
+        <div>${a.desc||'—'}</div>
+        <div style="text-align:right;font-family:'DM Mono',monospace">${fmt(a.amount)}</div>
+        <div style="text-align:right;font-family:'DM Mono',monospace;color:var(--text3)">${fmt(Number(a.amount||0)*Number(a.retPct||10)/100)}</div>
+        <div style="text-align:right;font-family:'DM Mono',monospace;font-weight:600">${fmt(net)}</div>
+        <div>
+          <span class="payapp-status status-${a.status||'pending'}" onclick="cyclePayAppStatus('${proj.id}',${i})" title="Click to advance status">
+            ${(a.status||'pending').charAt(0).toUpperCase()+(a.status||'pending').slice(1)}
+          </span>
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${a.date||'—'}</div>
+      </div>`;
+    });
+  }
+  document.getElementById('payapp-list').innerHTML=html;
+}
+
+function renderChangeOrders(proj){
+  const cos=proj.changeOrders||[];
+  let tbody='';
+  cos.forEach((co,i)=>{
+    const sc=co.status==='approved'?'background:var(--green-dim);color:var(--green)':co.status==='rejected'?'background:var(--red-dim);color:var(--red)':'background:var(--yellow-dim);color:var(--yellow)';
+    tbody+=`<tr>
+      <td style="font-weight:600">${co.num||'CO-'+(i+1)}</td>
+      <td>${co.desc||'—'}</td>
+      <td style="color:${co.status==='approved'?'var(--green)':co.status==='rejected'?'var(--red)':'var(--yellow)'}">${fmt(co.amount)}</td>
+      <td><span class="co-status" style="${sc}">${co.status||'pending'}</span></td>
+      <td style="color:var(--text3)">${co.date||'—'}</td>
+      <td><span onclick="deleteCO('${proj.id}',${i})" style="cursor:pointer;color:var(--text3);font-size:11px">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('co-tbody').innerHTML=tbody||'<tr><td colspan="6" class="empty-state">No change orders yet</td></tr>';
+}
+
+function renderOwnerCosts(proj){
+  const costs=proj.ownerCosts||[];
+  let tbody='';
+  costs.forEach((c,i)=>{
+    const over=Number(c.actual||0)>Number(c.budget||0);
+    tbody+=`<tr>
+      <td><span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${c.category||'Other'}</span></td>
+      <td>${c.desc||'—'}</td>
+      <td style="font-family:'DM Mono',monospace">${fmt(c.budget)}</td>
+      <td style="font-family:'DM Mono',monospace;color:${over?'var(--red)':'var(--green)'}">${fmt(c.actual)}</td>
+      <td style="color:var(--text3)">${c.date||'—'}</td>
+      <td><span onclick="deleteOC('${proj.id}',${i})" style="cursor:pointer;color:var(--text3);font-size:11px">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('oc-tbody').innerHTML=tbody||'<tr><td colspan="6" class="empty-state">No owner costs yet</td></tr>';
+}
+
+function renderProjStaffing(proj){
+  const allocated=(_finCache.staff||[]).filter(s=>((_finCache.allocations[s.id]||{})[proj.id]||0)>0);
+  let tbody='';
+  allocated.forEach(s=>{
+    const a=(_finCache.allocations[s.id]||{})[proj.id]||0;
+    const cost=Number(s.rate||0)*(a/100);
+    tbody+=`<tr>
+      <td>${s.name}</td>
+      <td><input class="alloc-input" type="number" min="0" max="100" value="${a}" onchange="updateAlloc('${s.id}','${proj.id}',this.value)"/>%</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${fmt(s.rate)}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(cost)}</td>
+    </tr>`;
+  });
+  if(tbody==='') tbody='<tr><td colspan="4" class="empty-state">No staff allocated to this project. Go to Staffing tab to allocate.</td></tr>';
+  document.getElementById('proj-staff-tbody').innerHTML=tbody;
+}
+
+// ═══════════════════════════════════════
+// CRUD OPERATIONS
+// ═══════════════════════════════════════
+function openModal(type){ document.getElementById('modal-'+type).classList.add('open'); }
+function closeModal(type){ document.getElementById('modal-'+type).classList.remove('open'); }
+
+function saveProject(){
+  const name=document.getElementById('m-proj-name').value.trim();
+  if(!name) return;
+  const proj={
+    id: uid(), name, color: document.getElementById('m-proj-color').value,
+    epcContract: Number(document.getElementById('m-proj-epc').value||0),
+    ownerBudget: Number(document.getElementById('m-proj-budget').value||0),
+    status: document.getElementById('m-proj-status').value,
+    payApps:[], changeOrders:[], ownerCosts:[], equipment:[]
+  };
+  _finCache.projects.push(proj);
+  scheduleSave(); renderPortfolio();
+  closeModal('add-project');
+  ['m-proj-name','m-proj-epc','m-proj-budget'].forEach(id=>document.getElementById(id).value='');
+}
+
+function saveStaff(){
+  const name=document.getElementById('m-staff-name').value.trim();
+  const rate=Number(document.getElementById('m-staff-rate').value||0);
+  if(!name) return;
+  if(!_finCache.staff) _finCache.staff=[];
+  const s={id:uid(), name, rate};
+  _finCache.staff.push(s);
+  if(!_finCache.allocations) _finCache.allocations={};
+  _finCache.allocations[s.id]={};
+  scheduleSave(); renderStaffing();
+  closeModal('add-staff');
+  document.getElementById('m-staff-name').value='';
+  document.getElementById('m-staff-rate').value='';
+}
+
+function savePayApp(){
+  const projId=_currentProject;
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  const pa={
+    id:uid(), num:document.getElementById('m-pa-num').value,
+    desc:document.getElementById('m-pa-desc').value,
+    amount:Number(document.getElementById('m-pa-amount').value||0),
+    retPct:Number(document.getElementById('m-pa-ret').value||10),
+    status:document.getElementById('m-pa-status').value,
+    date:document.getElementById('m-pa-date').value
+  };
+  proj.payApps.push(pa);
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+  closeModal('add-payapp');
+}
+
+function saveChangeOrder(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj) return;
+  const co={
+    id:uid(), num:document.getElementById('m-co-num').value,
+    desc:document.getElementById('m-co-desc').value,
+    amount:Number(document.getElementById('m-co-amount').value||0),
+    status:document.getElementById('m-co-status').value,
+    date:document.getElementById('m-co-date').value
+  };
+  proj.changeOrders.push(co);
+  scheduleSave(); renderProjectDetail(_currentProject); renderPortfolio();
+  closeModal('add-co');
+}
+
+function saveOwnerCost(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj) return;
+  const oc={
+    id:uid(), category:document.getElementById('m-oc-cat').value,
+    desc:document.getElementById('m-oc-desc').value,
+    budget:Number(document.getElementById('m-oc-budget').value||0),
+    actual:Number(document.getElementById('m-oc-actual').value||0),
+    date:document.getElementById('m-oc-date').value
+  };
+  proj.ownerCosts.push(oc);
+  scheduleSave(); renderProjectDetail(_currentProject); renderPortfolio();
+  closeModal('add-ownercost');
+}
+
+function updateAlloc(staffId, projId, val){
+  if(!_finCache.allocations[staffId]) _finCache.allocations[staffId]={};
+  _finCache.allocations[staffId][projId]=Number(val||0);
+  scheduleSave(); renderStaffing();
+  if(_currentProject===projId) renderProjectDetail(projId);
+  renderPortfolio();
+}
+
+function updateStaffName(id, name){
+  const s=_finCache.staff.find(s=>s.id===id);
+  if(s){ s.name=name.trim(); scheduleSave(); }
+}
+
+function updateStaffRate(id, rate){
+  const s=_finCache.staff.find(s=>s.id===id);
+  if(s){ s.rate=Number(rate||0); scheduleSave(); renderStaffing(); renderPortfolio(); }
+}
+
+function deleteStaff(id){
+  if(!confirm('Remove this person?')) return;
+  _finCache.staff=(_finCache.staff||[]).filter(s=>s.id!==id);
+  delete _finCache.allocations[id];
+  scheduleSave(); renderStaffing(); renderPortfolio();
+}
+
+function deleteCO(projId, idx){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  proj.changeOrders.splice(idx,1);
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+function saveEquipment(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj){return;}
+  if(!proj.equipment) proj.equipment=[];
+  const item={
+    id:uid(),
+    desc:document.getElementById('m-eq-desc').value,
+    category:document.getElementById('m-eq-cat').value,
+    vendor:document.getElementById('m-eq-vendor').value,
+    po:Number(document.getElementById('m-eq-po').value||0),
+    invoiced:Number(document.getElementById('m-eq-invoiced').value||0),
+    paid:Number(document.getElementById('m-eq-paid').value||0),
+    status:document.getElementById('m-eq-status').value,
+    date:document.getElementById('m-eq-date').value
+  };
+  proj.equipment.push(item);
+  scheduleSave(); renderProjectDetail(_currentProject); renderPortfolio();
+  closeModal('add-equipment');
+  ['m-eq-desc','m-eq-vendor','m-eq-po','m-eq-invoiced','m-eq-paid'].forEach(id=>document.getElementById(id).value='');
+}
+
+function deleteEquipment(projId, idx){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  proj.equipment.splice(idx,1);
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+function renderEquipment(proj){
+  const items=proj.equipment||[];
+  const statusColors={
+    'ordered':'background:var(--blue-dim);color:var(--blue)',
+    'in-transit':'background:var(--yellow-dim);color:var(--yellow)',
+    'delivered':'background:var(--green-dim);color:var(--green)',
+    'installed':'background:var(--green-dim);color:var(--green)',
+    'pending':'background:var(--border);color:var(--text3)'
+  };
+  let tbody='';
+  items.forEach((item,i)=>{
+    const sc=statusColors[item.status]||statusColors.pending;
+    tbody+=`<tr>
+      <td>
+        <div style="font-weight:600;font-size:11px">${item.desc||'—'}</div>
+        <div style="font-size:9px;color:var(--text3)">${item.category||''}</div>
+      </td>
+      <td style="color:var(--text3);font-size:11px">${item.vendor||'—'}</td>
+      <td style="font-family:'DM Mono',monospace">${fmt(item.po)}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--yellow)">${fmt(item.invoiced)}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(item.paid)}</td>
+      <td><span class="co-status" style="${sc}">${item.status||'pending'}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${item.date||'—'}</td>
+      <td><span onclick="deleteEquipment('${proj.id}',${i})" style="cursor:pointer;color:var(--text3);font-size:11px">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('equip-tbody').innerHTML=tbody||'<tr><td colspan="8" class="empty-state">No equipment items yet</td></tr>';
+
+  // Summary by category
+  const cats={};
+  items.forEach(item=>{
+    if(!cats[item.category]) cats[item.category]={po:0,invoiced:0,paid:0};
+    cats[item.category].po+=Number(item.po||0);
+    cats[item.category].invoiced+=Number(item.invoiced||0);
+    cats[item.category].paid+=Number(item.paid||0);
+  });
+  const summaryEl=document.getElementById('equip-summary');
+  if(Object.keys(cats).length===0){ summaryEl.innerHTML=''; return; }
+  summaryEl.innerHTML=Object.entries(cats).map(([cat,v])=>`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${cat}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:13px">${fmt(v.invoiced)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.po)}</span></div>
+      <div style="font-size:9px;color:var(--green);margin-top:2px">${fmt(v.paid)} paid</div>
+    </div>`).join('');
+}
+
+function deleteOC(projId, idx){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  proj.ownerCosts.splice(idx,1);
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+function cyclePayAppStatus(projId, idx){
+  const CYCLE=['pending','submitted','approved','paid'];
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  const pa=proj.payApps[idx];
+  const cur=CYCLE.indexOf(pa.status||'pending');
+  pa.status=CYCLE[(cur+1)%CYCLE.length];
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+function editField(projId, field, label){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  const val=prompt(`Enter ${label}:`, proj[field]||0);
+  if(val===null) return;
+  proj[field]=Number(val)||0;
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+function downloadBackup(){
+  const data=JSON.stringify(_finCache,null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='financial-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(el=>{
+  el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+loadFin().then(()=>{
+  renderPortfolio();
+  renderStaffing();
+});
+
+window.addEventListener('beforeunload',e=>{
+  if(_isDirty||_saveTimer){ e.preventDefault(); e.returnValue=''; }
+});
+</script>
+</body>
+</html>
