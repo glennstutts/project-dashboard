@@ -81,6 +81,9 @@
   /* Subtasks */
   .h-subtask { display: flex; align-items: flex-start; gap: 5px; padding: 2px 3px 2px 8px; border-radius: 3px; position: relative; margin-left: 14px; }
   .h-subtask:hover { background: var(--bg3); }
+  .h-subtask:hover .subtask-drag-handle { opacity: 0.6; }
+  .h-subtask .subtask-drag-handle:hover { opacity: 1 !important; }
+  .h-subtask.drag-over-note { border-top: 2px solid #2471a3; margin-top: 1px; }
   .h-subtask.age-yellow { border-left: 2px solid #f1c40f; }
   .h-subtask.age-red { border-left: 2px solid #e74c3c; }
   .subtask-actions { display: none; align-items: center; gap: 3px; flex-shrink: 0; }
@@ -99,6 +102,8 @@
   /* Milestone scrollable */
   .ms-scroll { overflow-x: visible; }
   .ms-table { width: 100%; }
+  .ms-table tr.ms-drop-target { border-top: 2px solid #2471a3; }
+  .ms-table tr[draggable] { cursor: default; }
   /* Contract milestone table */
   .ctr-table { width: 100%; border-collapse: collapse; }
   .ctr-table th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 2px 6px; border-bottom: 1px solid var(--border); text-align: left; }
@@ -696,6 +701,7 @@ function renderBox(boxId){
               const stPriority=st.priority||'none';
               const stBg=stPriority==='high'?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':stPriority==='med'?'background:rgba(241,196,15,0.06);border-left:2px solid #f1c40f;padding-left:4px;':stPriority==='low'?'background:rgba(39,174,96,0.06);border-left:2px solid #27ae60;padding-left:4px;':'';
               html+=`<div class="h-subtask${stAc?' age-'+stAc:''}${stChecked?' checked':''}" style="${stBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">
+                <span class="subtask-drag-handle" style="font-size:11px;color:var(--text3);cursor:grab;opacity:0;flex-shrink:0;user-select:none;padding:0 2px;margin-top:1px" title="Drag to reorder">⠿</span>
                 <input type="checkbox" class="subtask-cb" ${stChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}"/>
                 ${priorityDot(stPriority)}
                 <div class="subtask-text" contenteditable="true" spellcheck="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">${st.text||''}</div>
@@ -954,31 +960,54 @@ function bindBox(boxId){
         {label:'⬜ No priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'none')},
       ]);
     });
-    // Drag to reorder
-    row.setAttribute('draggable','true');
+    // Drag to reorder — only from handle
+    const stHandle=row.querySelector('.subtask-drag-handle');
+    if(stHandle){
+      stHandle.addEventListener('mousedown',()=>{ row.setAttribute('draggable','true'); });
+    }
+    row.setAttribute('draggable','false'); // default off, enabled on handle mousedown
     row.addEventListener('dragstart',e=>{
+      if(!row.getAttribute('draggable')||row.getAttribute('draggable')==='false')return;
       dragType='subtask';
       dragData={pi:row.dataset.pi,si:row.dataset.si,ti:row.dataset.ti,sti:row.dataset.sti};
-      row.style.opacity='0.4';e.dataTransfer.effectAllowed='move';
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','subtask');
     });
-    row.addEventListener('dragend',()=>{row.style.opacity='';clearDragStyles();});
+    row.addEventListener('dragend',()=>{
+      row.setAttribute('draggable','false');
+      row.classList.remove('dragging');
+      row.style.opacity='';
+      el.querySelectorAll('.h-subtask').forEach(r=>{
+        r.classList.remove('drag-over-note');
+        r.style.borderTop='';
+      });
+    });
     row.addEventListener('dragover',e=>{
       if(dragType!=='subtask')return;
       e.preventDefault();
-      if(row.dataset.ti===dragData.ti&&row.dataset.sti!==dragData.sti){
-        el.querySelectorAll('.h-subtask').forEach(r=>r.style.borderTop='');
-        row.style.borderTop='2px solid #2471a3';
-      }
+      // Only allow reorder within same parent task
+      if(row.dataset.ti!==dragData.ti||row.dataset.si!==dragData.si||row.dataset.pi!==dragData.pi)return;
+      if(row.dataset.sti===dragData.sti)return;
+      el.querySelectorAll('.h-subtask').forEach(r=>{
+        r.classList.remove('drag-over-note');
+        r.style.borderTop='';
+      });
+      row.classList.add('drag-over-note');
+      row.style.borderTop='2px solid #2471a3';
     });
     row.addEventListener('drop',e=>{
       e.preventDefault();
       if(dragType!=='subtask'||!dragData)return;
       const{pi,si,ti,sti}=row.dataset;
-      if(ti!==dragData.ti||sti===dragData.sti)return;
+      // Must be same task
+      if(ti!==dragData.ti||si!==dragData.si||pi!==dragData.pi)return;
+      if(sti===dragData.sti)return;
       const d=loadD();
       const subtasks=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks;
       const[moved]=subtasks.splice(parseInt(dragData.sti),1);
       subtasks.splice(parseInt(sti),0,moved);
+      dragType=null;dragData=null;
       saveD(d);renderBox(boxId);
     });
   });
@@ -1412,8 +1441,15 @@ function renderCTR(id, rows, data){
     else if(n<=7) cdDisp=`<span class="cd cd-soon">${n}d</span>`;
     else cdDisp=`<span class="cd cd-ok">${n}d</span>`;
 
-    html+=`<tr class="${rowCls}">
-      <td><div class="ctr-name" contenteditable="true" data-id="${id}" data-idx="${i}">${row.name}</div></td>
+    html+=`<tr class="${rowCls}" draggable="true">
+      <td>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="ms-drag-handle" data-id="${id}" data-idx="${i}" data-section="contract"
+            style="font-size:12px;color:var(--text3);cursor:grab;opacity:0.4;flex-shrink:0;user-select:none"
+            title="Drag to reorder">⠿</span>
+          <div class="ctr-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1">${row.name}</div>
+        </div>
+      </td>
       <td><span class="status-badge ${s.cls} status-cycle" data-id="${id}" data-idx="${i}" title="Click to cycle status">${s.label}</span></td>
       <td>${cdDisp}</td>
       <td class="ctr-date"><input type="date" class="ms-input" value="${row.deadline||''}" data-id="${id}" data-idx="${i}" data-field="deadline"/></td>
@@ -1431,6 +1467,42 @@ function renderCTR(id, rows, data){
       const cur=row.status||'none';
       const next=STATUS_CYCLE[(STATUS_CYCLE.indexOf(cur)+1)%STATUS_CYCLE.length];
       row.status=next; saveMS(d); renderCTR(id,d[id],d);
+    });
+  });
+
+  // Drag to reorder contract rows
+  let ctrDragSrc=null;
+  el.querySelectorAll('.ms-drag-handle').forEach(handle=>{
+    handle.addEventListener('mouseover',()=>handle.style.opacity='1');
+    handle.addEventListener('mouseout',()=>handle.style.opacity='0.4');
+    const row=handle.closest('tr');
+    if(!row)return;
+    row.addEventListener('dragstart',e=>{
+      ctrDragSrc={id:handle.dataset.id,idx:parseInt(handle.dataset.idx)};
+      row.style.opacity='0.4';e.dataTransfer.effectAllowed='move';
+    });
+    row.addEventListener('dragend',()=>{
+      row.style.opacity='';
+      el.querySelectorAll('tr').forEach(r=>r.style.borderTop='');
+      ctrDragSrc=null;
+    });
+    row.addEventListener('dragover',e=>{
+      if(!ctrDragSrc)return;
+      e.preventDefault();
+      const dstIdx=parseInt(handle.dataset.idx);
+      if(dstIdx===ctrDragSrc.idx)return;
+      el.querySelectorAll('tr').forEach(r=>r.style.borderTop='');
+      row.style.borderTop='2px solid #2471a3';
+    });
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!ctrDragSrc)return;
+      const dstIdx=parseInt(handle.dataset.idx);
+      if(dstIdx===ctrDragSrc.idx)return;
+      const d=loadMS();
+      const[moved]=d[ctrDragSrc.id].splice(ctrDragSrc.idx,1);
+      d[ctrDragSrc.id].splice(dstIdx,0,moved);
+      saveMS(d);renderCTR(id,d[id],d);
     });
   });
 
@@ -1524,7 +1596,10 @@ function renderMS(id,rows,data){
     html+=`<tr>
       <td>
         <div style="display:flex;align-items:flex-start;gap:4px">
-          <div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1;white-space:normal;word-break:break-word;max-width:140px;line-height:1.3">${row.name}</div>
+          <span class="ms-drag-handle" data-id="${id}" data-idx="${i}" data-section="${row.section||'General'}"
+            style="font-size:12px;color:var(--text3);cursor:grab;flex-shrink:0;padding:2px 2px 0 0;opacity:0.4;user-select:none;line-height:1"
+            title="Drag to reorder">⠿</span>
+          <div class="ms-name" contenteditable="true" data-id="${id}" data-idx="${i}" style="flex:1;white-space:normal;word-break:break-word;max-width:120px;line-height:1.3">${row.name}</div>
           <div style="display:flex;flex-direction:column;gap:2px;flex-shrink:0">
             <select class="ms-section-sel ms-input" data-id="${id}" data-idx="${i}" style="font-size:9px;padding:1px 2px;max-width:70px" title="Move to section">
               ${Object.keys(sections).map(s=>`<option value="${s}" ${(row.section||'General')===s?'selected':''}>${s}</option>`).join('')}
@@ -1686,6 +1761,73 @@ function renderMS(id,rows,data){
     });
     btn.addEventListener('mouseover',()=>btn.style.opacity='1');
     btn.addEventListener('mouseout',()=>btn.style.opacity='0.4');
+  });
+
+  // ── Milestone drag to reorder within section ──
+  let msDragSrc=null;
+  el.querySelectorAll('.ms-drag-handle').forEach(handle=>{
+    handle.addEventListener('mouseover',()=>handle.style.opacity='1');
+    handle.addEventListener('mouseout',()=>handle.style.opacity='0.4');
+
+    const row=handle.closest('tr');
+    if(!row)return;
+    row.setAttribute('draggable','true');
+
+    row.addEventListener('dragstart',e=>{
+      if(!e.target.closest('.ms-drag-handle')&&e.target!==row)return;
+      msDragSrc={id:handle.dataset.id, idx:parseInt(handle.dataset.idx), section:handle.dataset.section};
+      row.style.opacity='0.4';
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','ms-row');
+    });
+
+    row.addEventListener('dragend',()=>{
+      row.style.opacity='';
+      el.querySelectorAll('tr.ms-drop-target').forEach(r=>{
+        r.classList.remove('ms-drop-target');
+        r.style.borderTop='';
+      });
+      msDragSrc=null;
+    });
+
+    row.addEventListener('dragover',e=>{
+      if(!msDragSrc)return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect='move';
+      // Only allow reorder within same section
+      const targetIdx=parseInt(handle.dataset.idx);
+      const targetSection=handle.dataset.section;
+      if(targetSection!==msDragSrc.section)return;
+      if(targetIdx===msDragSrc.idx)return;
+      el.querySelectorAll('tr.ms-drop-target').forEach(r=>{
+        r.classList.remove('ms-drop-target');
+        r.style.borderTop='';
+      });
+      row.classList.add('ms-drop-target');
+      row.style.borderTop='2px solid #2471a3';
+    });
+
+    row.addEventListener('drop',e=>{
+      e.preventDefault();
+      if(!msDragSrc)return;
+      const dstIdx=parseInt(handle.dataset.idx);
+      const dstSection=handle.dataset.section;
+      if(dstSection!==msDragSrc.section||dstIdx===msDragSrc.idx)return;
+
+      const d=loadMS();
+      const rows=d[msDragSrc.id];
+      // Get the actual full-array indices for src and dst
+      // (dataset.idx is the position in the full array, not just within section)
+      const srcGlobalIdx=msDragSrc.idx;
+      const dstGlobalIdx=dstIdx;
+
+      const[moved]=rows.splice(srcGlobalIdx,1);
+      rows.splice(dstGlobalIdx,0,moved);
+      saveMS(d);
+
+      if(isContractBox(msDragSrc.id)) renderCTR(msDragSrc.id,d[msDragSrc.id],d);
+      else renderMS(msDragSrc.id,d[msDragSrc.id],d);
+    });
   });
 
   el.querySelectorAll('.add-row, .add-ms-row').forEach(btn=>{
