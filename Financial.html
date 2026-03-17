@@ -281,8 +281,10 @@
 
   <div class="sub-tabs">
     <div class="sub-tab active" onclick="showSubTab('overview')">Overview</div>
+    <div class="sub-tab" onclick="showSubTab('loan')">Loan &amp; Draws</div>
     <div class="sub-tab" onclick="showSubTab('payapps')">Pay Apps</div>
     <div class="sub-tab" onclick="showSubTab('changeorders')">Change Orders</div>
+    <div class="sub-tab" onclick="showSubTab('contingency')">Contingency</div>
     <div class="sub-tab" onclick="showSubTab('equipment')">Equipment</div>
     <div class="sub-tab" onclick="showSubTab('ownercosts')">Owner Costs</div>
     <div class="sub-tab" onclick="showSubTab('staffing')">Staffing</div>
@@ -291,6 +293,68 @@
   <!-- Overview -->
   <div id="sub-overview">
     <div class="detail-grid" id="proj-overview-grid" style="grid-template-columns:1fr 1fr 1fr"></div>
+  </div>
+
+  <!-- Loan & Draws -->
+  <div id="sub-loan" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <!-- Loan Setup Card -->
+      <div class="detail-card">
+        <div class="detail-card-title">Construction Loan
+          <span onclick="editLoanField()" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span>
+        </div>
+        <div id="loan-setup-display"></div>
+      </div>
+      <!-- Draw Summary -->
+      <div class="detail-card">
+        <div class="detail-card-title">Draw Summary</div>
+        <div id="loan-draw-summary"></div>
+      </div>
+    </div>
+    <!-- Draw schedule table -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-title" style="margin-bottom:0">Draw Schedule</div>
+      <button class="btn btn-primary" onclick="openModal('add-draw')">+ Log Draw</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="co-table" id="draw-table">
+        <thead><tr>
+          <th>Draw #</th><th>Milestone / Description</th><th>Amount</th>
+          <th>% of Loan</th><th>Status</th><th>Date Requested</th><th>Date Funded</th><th></th>
+        </tr></thead>
+        <tbody id="draw-tbody"></tbody>
+      </table>
+      <div class="add-row-btn" onclick="openModal('add-draw')">+ Log draw request</div>
+    </div>
+    <!-- Loan balance bar -->
+    <div id="loan-balance-bar" style="margin-top:14px"></div>
+  </div>
+
+  <!-- Contingency -->
+  <div id="sub-contingency" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div class="detail-card">
+        <div class="detail-card-title">Contingency Budget
+          <span onclick="editContingency()" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span>
+        </div>
+        <div id="contingency-summary"></div>
+      </div>
+      <div class="detail-card">
+        <div class="detail-card-title">Burn Rate</div>
+        <div id="contingency-burn"></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="section-title" style="margin-bottom:0">Contingency Usage Log</div>
+      <button class="btn btn-primary" onclick="openModal('add-contingency')">+ Log Use</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="co-table">
+        <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Approved By</th><th></th></tr></thead>
+        <tbody id="contingency-tbody"></tbody>
+      </table>
+      <div class="add-row-btn" onclick="openModal('add-contingency')">+ Log contingency use</div>
+    </div>
   </div>
 
   <!-- Pay Apps -->
@@ -315,10 +379,22 @@
       <div class="section-title" style="margin-bottom:0">Change Orders</div>
       <button class="btn btn-primary" onclick="openModal('add-co')">+ Add CO</button>
     </div>
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-      <table class="co-table" id="co-table">
+    <!-- CO summary strip -->
+    <div id="co-summary-strip" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px"></div>
+    <!-- Pending COs -->
+    <div style="margin-bottom:6px;font-size:10px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px">Pending — at risk</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <table class="co-table">
         <thead><tr><th>#</th><th>Description</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
-        <tbody id="co-tbody"></tbody>
+        <tbody id="co-tbody-pending"></tbody>
+      </table>
+    </div>
+    <!-- Approved COs -->
+    <div style="margin-bottom:6px;font-size:10px;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.5px">Approved — contract impact</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <table class="co-table">
+        <thead><tr><th>#</th><th>Description</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead>
+        <tbody id="co-tbody-approved"></tbody>
       </table>
     </div>
   </div>
@@ -468,6 +544,68 @@
 </div>
 
 <!-- Add Owner Cost Modal -->
+<!-- Add Draw Modal -->
+<div class="modal-overlay" id="modal-add-draw">
+  <div class="modal">
+    <h3>Log Construction Loan Draw</h3>
+    <div class="form-row"><label>Draw Number</label><input id="m-draw-num" placeholder="1"/></div>
+    <div class="form-row"><label>Milestone / Description</label><input id="m-draw-desc" placeholder="NTP — Initial mobilization"/></div>
+    <div class="form-row"><label>Amount Requested ($)</label><input id="m-draw-amount" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Status</label>
+      <select id="m-draw-status">
+        <option value="pending">Pending Lender Review</option>
+        <option value="approved">Approved</option>
+        <option value="funded">Funded</option>
+        <option value="partial">Partially Funded</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Date Requested</label><input id="m-draw-req-date" type="date"/></div>
+    <div class="form-row"><label>Date Funded</label><input id="m-draw-fund-date" type="date"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveDraw()">Log Draw</button>
+      <button class="btn" onclick="closeModal('add-draw')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loan Setup Modal -->
+<div class="modal-overlay" id="modal-loan-setup">
+  <div class="modal">
+    <h3>Construction Loan Setup</h3>
+    <div class="form-row"><label>Lender</label><input id="m-loan-lender" placeholder="Bank / lender name"/></div>
+    <div class="form-row"><label>Total Loan Amount ($)</label><input id="m-loan-amount" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Interest Rate (%)</label><input id="m-loan-rate" type="number" step="0.01" placeholder="6.50"/></div>
+    <div class="form-row"><label>Loan Maturity Date</label><input id="m-loan-maturity" type="date"/></div>
+    <div class="form-row"><label>Lender Reserve / Holdback ($)</label><input id="m-loan-holdback" type="number" placeholder="0"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveLoanSetup()">Save</button>
+      <button class="btn" onclick="closeModal('loan-setup')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contingency Use Modal -->
+<div class="modal-overlay" id="modal-add-contingency">
+  <div class="modal">
+    <h3>Log Contingency Use</h3>
+    <div class="form-row"><label>Date</label><input id="m-cont-date" type="date"/></div>
+    <div class="form-row"><label>Category</label>
+      <select id="m-cont-cat">
+        <option>Design Change</option><option>Unforeseen Site Condition</option>
+        <option>Owner-Directed Change</option><option>Equipment Issue</option>
+        <option>Weather / Force Majeure</option><option>Permitting</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-row"><label>Description</label><input id="m-cont-desc" placeholder="Describe the cost..."/></div>
+    <div class="form-row"><label>Amount ($)</label><input id="m-cont-amount" type="number" placeholder="0"/></div>
+    <div class="form-row"><label>Approved By</label><input id="m-cont-approver" placeholder="Name / title"/></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveContingencyUse()">Log</button>
+      <button class="btn" onclick="closeModal('add-contingency')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Equipment Modal -->
 <div class="modal-overlay" id="modal-add-equipment">
   <div class="modal">
@@ -551,12 +689,12 @@ function pct(a, b){ if(!b) return 0; return Math.round(a/b*100); }
 function defaultData(){
   return {
     projects: [
-      {id:'eagle-springs', name:'Eagle Springs', color:'#6366f1', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
-      {id:'lupinus-2',     name:'Lupinus 2',     color:'#22c55e', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
-      {id:'lupinus',       name:'Lupinus',       color:'#f97316', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
-      {id:'staccato',      name:'Staccato',      color:'#eab308', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
-      {id:'gaia',          name:'Gaia',          color:'#3b82f6', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
-      {id:'midpoint',      name:'Midpoint',      color:'#ec4899', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[]},
+      {id:'eagle-springs', name:'Eagle Springs', color:'#6366f1', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      {id:'lupinus-2',     name:'Lupinus 2',     color:'#22c55e', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      {id:'lupinus',       name:'Lupinus',       color:'#f97316', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      {id:'staccato',      name:'Staccato',      color:'#eab308', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      {id:'gaia',          name:'Gaia',          color:'#3b82f6', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      {id:'midpoint',      name:'Midpoint',      color:'#ec4899', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
     ],
     staff: [],
     allocations: {} // {staffId: {projectId: pct}}
@@ -906,6 +1044,8 @@ function renderProjectDetail(projId){
   if(_currentSubTab==='overview') renderOverview(proj, t);
   else if(_currentSubTab==='payapps') renderPayApps(proj);
   else if(_currentSubTab==='changeorders') renderChangeOrders(proj);
+  else if(_currentSubTab==='loan') renderLoan(proj);
+  else if(_currentSubTab==='contingency') renderContingency(proj);
   else if(_currentSubTab==='equipment') renderEquipment(proj);
   else if(_currentSubTab==='ownercosts') renderOwnerCosts(proj);
   else if(_currentSubTab==='staffing') renderProjStaffing(proj);
@@ -987,6 +1127,43 @@ function renderOverview(proj, t){
         <div class="budget-label">Remaining</div>
         <div class="budget-amount">${fmt(ocBudget-ocActual)}</div>
       </div>
+    </div>
+
+    <!-- Loan Draw -->
+    <div class="detail-card">
+      <div class="detail-card-title">Construction Loan
+        <span onclick="showSubTab('loan')" style="cursor:pointer;font-size:9px;color:var(--accent)">View all</span>
+      </div>
+      ${(()=>{
+        const loan=proj.loan||{}; const draws=proj.draws||[];
+        const funded=draws.filter(d=>d.status==='funded'||d.status==='partial').reduce((s,d)=>s+Number(d.amount||0),0);
+        const loanAmt=Number(loan.amount||0);
+        const pctDrawn=loanAmt>0?Math.round(funded/loanAmt*100):0;
+        const barColor=pctDrawn>90?'var(--red)':pctDrawn>70?'var(--yellow)':'var(--blue)';
+        return `<div class="budget-row"><div class="budget-label">Facility</div><div class="budget-amount">${fmt(loanAmt)}</div></div>
+          <div class="budget-row"><div class="budget-label">Drawn</div><div class="budget-amount" style="color:var(--green)">${fmt(funded)}</div></div>
+          <div class="budget-row"><div class="budget-label">Available</div><div class="budget-amount" style="color:var(--blue)">${fmt(loanAmt-funded-Number(loan.holdback||0))}</div></div>
+          <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${pctDrawn}%;height:100%;background:${barColor};border-radius:3px"></div></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">${pctDrawn}% drawn · ${draws.length} draw${draws.length!==1?'s':''}</div>`;
+      })()}
+    </div>
+
+    <!-- Contingency -->
+    <div class="detail-card">
+      <div class="detail-card-title">Contingency
+        <span onclick="showSubTab('contingency')" style="cursor:pointer;font-size:9px;color:var(--accent)">View all</span>
+      </div>
+      ${(()=>{
+        const budget=Number(proj.contingencyBudget||0);
+        const used=(proj.contingencyUsed||[]).reduce((s,c)=>s+Number(c.amount||0),0);
+        const burnPct=budget>0?Math.round(used/budget*100):0;
+        const burnColor=burnPct>80?'var(--red)':burnPct>60?'var(--yellow)':'var(--green)';
+        return `<div class="budget-row"><div class="budget-label">Budget</div><div class="budget-amount">${fmt(budget)}</div></div>
+          <div class="budget-row"><div class="budget-label">Used</div><div class="budget-amount" style="color:${burnColor}">${fmt(used)}</div></div>
+          <div class="budget-row"><div class="budget-label">Remaining</div><div class="budget-amount" style="color:${used>budget?'var(--red)':'var(--green)'}">${fmt(budget-used)}</div></div>
+          <div style="margin-top:8px;height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="width:${Math.min(burnPct,100)}%;height:100%;background:${burnColor};border-radius:3px"></div></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px">${burnPct}% burned · ${(proj.contingencyUsed||[]).length} item${(proj.contingencyUsed||[]).length!==1?'s':''}</div>`;
+      })()}
     </div>
 
     <!-- Equipment -->
@@ -1124,7 +1301,7 @@ function saveProject(){
     epcContract: Number(document.getElementById('m-proj-epc').value||0),
     ownerBudget: Number(document.getElementById('m-proj-budget').value||0),
     status: document.getElementById('m-proj-status').value,
-    payApps:[], changeOrders:[], ownerCosts:[], equipment:[]
+    payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}
   };
   _finCache.projects.push(proj);
   scheduleSave(); renderPortfolio();
@@ -1323,6 +1500,258 @@ function editField(projId, field, label){
   const val=prompt(`Enter ${label}:`, proj[field]||0);
   if(val===null) return;
   proj[field]=Number(val)||0;
+  scheduleSave(); renderProjectDetail(projId); renderPortfolio();
+}
+
+// ── LOAN & DRAWS ──
+function editLoanField(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj)return;
+  if(!proj.loan) proj.loan={lender:'',amount:0,rate:0,maturity:'',holdback:0};
+  document.getElementById('m-loan-lender').value=proj.loan.lender||'';
+  document.getElementById('m-loan-amount').value=proj.loan.amount||0;
+  document.getElementById('m-loan-rate').value=proj.loan.rate||0;
+  document.getElementById('m-loan-maturity').value=proj.loan.maturity||'';
+  document.getElementById('m-loan-holdback').value=proj.loan.holdback||0;
+  openModal('loan-setup');
+}
+
+function saveLoanSetup(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj)return;
+  if(!proj.loan)proj.loan={};
+  proj.loan.lender=document.getElementById('m-loan-lender').value;
+  proj.loan.amount=Number(document.getElementById('m-loan-amount').value||0);
+  proj.loan.rate=Number(document.getElementById('m-loan-rate').value||0);
+  proj.loan.maturity=document.getElementById('m-loan-maturity').value;
+  proj.loan.holdback=Number(document.getElementById('m-loan-holdback').value||0);
+  scheduleSave(); renderProjectDetail(_currentProject);
+  closeModal('loan-setup');
+}
+
+function saveDraw(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj)return;
+  if(!proj.draws)proj.draws=[];
+  proj.draws.push({
+    id:uid(), num:document.getElementById('m-draw-num').value,
+    desc:document.getElementById('m-draw-desc').value,
+    amount:Number(document.getElementById('m-draw-amount').value||0),
+    status:document.getElementById('m-draw-status').value,
+    reqDate:document.getElementById('m-draw-req-date').value,
+    fundDate:document.getElementById('m-draw-fund-date').value
+  });
+  scheduleSave(); renderProjectDetail(_currentProject);
+  closeModal('add-draw');
+}
+
+function deleteDraw(projId,idx){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj)return;
+  proj.draws.splice(idx,1);
+  scheduleSave(); renderProjectDetail(projId);
+}
+
+function renderLoan(proj){
+  const loan=proj.loan||{};
+  const draws=proj.draws||[];
+  const totalFunded=draws.filter(d=>d.status==='funded'||d.status==='partial').reduce((s,d)=>s+Number(d.amount||0),0);
+  const totalRequested=draws.reduce((s,d)=>s+Number(d.amount||0),0);
+  const loanAmt=Number(loan.amount||0);
+  const available=loanAmt-totalFunded-(Number(loan.holdback||0));
+  const pctDrawn=loanAmt>0?Math.round(totalFunded/loanAmt*100):0;
+  const barColor=pctDrawn>90?'var(--red)':pctDrawn>70?'var(--yellow)':'var(--blue)';
+  const statusColors={'funded':'background:var(--green-dim);color:var(--green)','approved':'background:var(--blue-dim);color:var(--blue)','pending':'background:var(--yellow-dim);color:var(--yellow)','partial':'background:var(--orange);color:white'};
+
+  document.getElementById('loan-setup-display').innerHTML=`
+    <div class="budget-row"><div class="budget-label">Lender</div><div class="budget-amount" style="font-family:'Syne',sans-serif">${loan.lender||'Not set'}</div></div>
+    <div class="budget-row"><div class="budget-label">Total Facility</div><div class="budget-amount">${fmt(loan.amount)}</div></div>
+    <div class="budget-row"><div class="budget-label">Interest Rate</div><div class="budget-amount">${loan.rate||0}%</div></div>
+    <div class="budget-row"><div class="budget-label">Maturity</div><div class="budget-amount" style="font-family:'Syne',sans-serif;font-size:11px">${loan.maturity||'—'}</div></div>
+    <div class="budget-row"><div class="budget-label">Holdback / Reserve</div><div class="budget-amount" style="color:var(--text3)">${fmt(loan.holdback)}</div></div>`;
+
+  document.getElementById('loan-draw-summary').innerHTML=`
+    <div class="budget-row"><div class="budget-label">Total Drawn</div><div class="budget-amount" style="color:var(--green)">${fmt(totalFunded)}</div></div>
+    <div class="budget-row"><div class="budget-label">Pending Requests</div><div class="budget-amount" style="color:var(--yellow)">${fmt(totalRequested-totalFunded)}</div></div>
+    <div class="budget-row"><div class="budget-label">Available to Draw</div><div class="budget-amount" style="color:var(--blue)">${fmt(available)}</div></div>
+    <div class="budget-row"><div class="budget-label">${pctDrawn}% drawn</div>
+      <div><div style="width:120px;height:8px;background:var(--border);border-radius:4px;overflow:hidden;display:inline-block;vertical-align:middle">
+        <div style="width:${pctDrawn}%;height:100%;background:${barColor};border-radius:4px"></div>
+      </div></div>
+    </div>`;
+
+  // Draw table
+  let tbody='';
+  draws.forEach((d,i)=>{
+    const pct=loanAmt>0?Math.round(Number(d.amount||0)/loanAmt*100):0;
+    const sc=statusColors[d.status]||statusColors.pending;
+    tbody+=`<tr>
+      <td style="font-weight:600">Draw ${d.num||i+1}</td>
+      <td>${d.desc||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-weight:600">${fmt(d.amount)}</td>
+      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${pct}%</td>
+      <td><span class="co-status" style="${sc}">${d.status}</span></td>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.reqDate||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green)">${d.fundDate||'—'}</td>
+      <td><span onclick="deleteDraw('${proj.id}',${i})" style="cursor:pointer;color:var(--text3)">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('draw-tbody').innerHTML=tbody||'<tr><td colspan="8" class="empty-state">No draws logged yet</td></tr>';
+
+  // Balance bar
+  document.getElementById('loan-balance-bar').innerHTML=loanAmt>0?`
+    <div class="section-title">Loan Balance Waterfall</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+      <div style="display:flex;height:32px;border-radius:4px;overflow:hidden;margin-bottom:8px">
+        <div style="width:${pctDrawn}%;background:var(--green);opacity:.7;transition:width .3s" title="Drawn: ${fmt(totalFunded)}"></div>
+        ${totalRequested>totalFunded?`<div style="width:${Math.round((totalRequested-totalFunded)/loanAmt*100)}%;background:var(--yellow);opacity:.7" title="Pending"></div>`:''}
+        <div style="flex:1;background:var(--border)" title="Available"></div>
+      </div>
+      <div style="display:flex;gap:16px;font-size:10px">
+        <span style="color:var(--green)">■ Drawn ${fmt(totalFunded)}</span>
+        <span style="color:var(--yellow)">■ Pending ${fmt(totalRequested-totalFunded)}</span>
+        <span style="color:var(--text3)">■ Available ${fmt(available)}</span>
+        ${loan.holdback?`<span style="color:var(--red)">■ Holdback ${fmt(loan.holdback)}</span>`:''}
+      </div>
+    </div>`:'<div class="empty-state">Set up loan details above to see waterfall</div>';
+}
+
+// ── CONTINGENCY ──
+function editContingency(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj)return;
+  const val=prompt('Contingency budget ($):', proj.contingencyBudget||0);
+  if(val===null)return;
+  proj.contingencyBudget=Number(val)||0;
+  scheduleSave(); renderProjectDetail(_currentProject);
+}
+
+function saveContingencyUse(){
+  const proj=_finCache.projects.find(p=>p.id===_currentProject);
+  if(!proj)return;
+  if(!proj.contingencyUsed)proj.contingencyUsed=[];
+  proj.contingencyUsed.push({
+    id:uid(), date:document.getElementById('m-cont-date').value,
+    category:document.getElementById('m-cont-cat').value,
+    desc:document.getElementById('m-cont-desc').value,
+    amount:Number(document.getElementById('m-cont-amount').value||0),
+    approver:document.getElementById('m-cont-approver').value
+  });
+  scheduleSave(); renderProjectDetail(_currentProject);
+  closeModal('add-contingency');
+}
+
+function deleteContingencyUse(projId,idx){
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj)return;
+  proj.contingencyUsed.splice(idx,1);
+  scheduleSave(); renderProjectDetail(projId);
+}
+
+function renderContingency(proj){
+  const budget=Number(proj.contingencyBudget||0);
+  const used=(proj.contingencyUsed||[]).reduce((s,c)=>s+Number(c.amount||0),0);
+  const remaining=budget-used;
+  const burnPct=budget>0?Math.round(used/budget*100):0;
+  const burnColor=burnPct>80?'var(--red)':burnPct>60?'var(--yellow)':'var(--green)';
+
+  document.getElementById('contingency-summary').innerHTML=`
+    <div class="budget-row"><div class="budget-label">Total Budget</div><div class="budget-amount">${fmt(budget)}</div></div>
+    <div class="budget-row"><div class="budget-label">Used</div><div class="budget-amount" style="color:${burnColor}">${fmt(used)}</div></div>
+    <div class="budget-row"><div class="budget-label">Remaining</div><div class="budget-amount" style="color:${remaining<0?'var(--red)':'var(--green)'}">${fmt(remaining)}</div></div>
+    <div style="margin-top:8px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px"><span>${burnPct}% burned</span><span>${fmt(budget)}</span></div>
+      <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden">
+        <div style="width:${Math.min(burnPct,100)}%;height:100%;background:${burnColor};border-radius:5px;transition:width .3s"></div>
+      </div>
+    </div>`;
+
+  // Category breakdown
+  const cats={};
+  (proj.contingencyUsed||[]).forEach(c=>{ cats[c.category]=(cats[c.category]||0)+Number(c.amount||0); });
+  const catHtml=Object.entries(cats).map(([cat,amt])=>`
+    <div class="budget-row">
+      <div class="budget-label" style="font-size:11px">${cat}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:60px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+          <div style="width:${budget>0?Math.round(amt/budget*100):0}%;height:100%;background:${burnColor};border-radius:2px"></div>
+        </div>
+        <div class="budget-amount" style="font-size:11px">${fmt(amt)}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('contingency-burn').innerHTML=catHtml||'<div style="color:var(--text3);font-size:11px;padding:8px 0">No usage logged yet</div>';
+
+  // Usage table
+  let tbody='';
+  (proj.contingencyUsed||[]).forEach((c,i)=>{
+    tbody+=`<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${c.date||'—'}</td>
+      <td><span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${c.category}</span></td>
+      <td>${c.desc||'—'}</td>
+      <td style="font-family:'DM Mono',monospace;color:${burnColor}">${fmt(c.amount)}</td>
+      <td style="font-size:11px;color:var(--text3)">${c.approver||'—'}</td>
+      <td><span onclick="deleteContingencyUse('${proj.id}',${i})" style="cursor:pointer;color:var(--text3)">✕</span></td>
+    </tr>`;
+  });
+  document.getElementById('contingency-tbody').innerHTML=tbody||'<tr><td colspan="6" class="empty-state">No contingency used yet</td></tr>';
+}
+
+// ── UPDATED CO RENDER — split pending vs approved ──
+function renderChangeOrders(proj){
+  const cos=proj.changeOrders||[];
+  const pending=cos.filter(c=>c.status==='pending');
+  const approved=cos.filter(c=>c.status==='approved');
+  const rejected=cos.filter(c=>c.status==='rejected');
+  const pendingTotal=pending.reduce((s,c)=>s+Number(c.amount||0),0);
+  const approvedTotal=approved.reduce((s,c)=>s+Number(c.amount||0),0);
+  const rejectedTotal=rejected.reduce((s,c)=>s+Number(c.amount||0),0);
+
+  document.getElementById('co-summary-strip').innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">PENDING RISK</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--yellow)">${fmt(pendingTotal)}</div>
+      <div style="font-size:9px;color:var(--text3)">${pending.length} CO${pending.length!==1?'s':''}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">APPROVED IMPACT</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--orange)">${fmt(approvedTotal)}</div>
+      <div style="font-size:9px;color:var(--text3)">${approved.length} CO${approved.length!==1?'s':''}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">REJECTED</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--text3)">${fmt(rejectedTotal)}</div>
+      <div style="font-size:9px;color:var(--text3)">${rejected.length} CO${rejected.length!==1?'s':''}</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+      <div style="font-size:9px;color:var(--text3);margin-bottom:4px">TOTAL EXPOSURE</div>
+      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--red)">${fmt(pendingTotal+approvedTotal)}</div>
+      <div style="font-size:9px;color:var(--text3)">pending + approved</div>
+    </div>`;
+
+  function coRows(list, color){
+    if(list.length===0) return `<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--text3);font-size:11px">None</td></tr>`;
+    return list.map((co,i)=>{
+      const realIdx=cos.indexOf(co);
+      return `<tr>
+        <td style="font-weight:600">${co.num||'CO-'+(realIdx+1)}</td>
+        <td>${co.desc||'—'}</td>
+        <td style="font-family:'DM Mono',monospace;color:${color}">${fmt(co.amount)}</td>
+        <td><span onclick="cycleCOStatus('${proj.id}',${realIdx})" style="cursor:pointer;font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${co.status}</span></td>
+        <td style="color:var(--text3)">${co.date||'—'}</td>
+        <td><span onclick="deleteCO('${proj.id}',${realIdx})" style="cursor:pointer;color:var(--text3)">✕</span></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('co-tbody-pending').innerHTML=coRows(pending,'var(--yellow)');
+  document.getElementById('co-tbody-approved').innerHTML=coRows(approved,'var(--orange)');
+}
+
+function cycleCOStatus(projId,idx){
+  const CYCLE=['pending','approved','rejected'];
+  const proj=_finCache.projects.find(p=>p.id===projId);
+  if(!proj)return;
+  const co=proj.changeOrders[idx];
+  co.status=CYCLE[(CYCLE.indexOf(co.status||'pending')+1)%CYCLE.length];
   scheduleSave(); renderProjectDetail(projId); renderPortfolio();
 }
 
