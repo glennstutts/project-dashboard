@@ -2057,15 +2057,7 @@ function editWbsBucket(projId, bucketKey){
 // ═══════════════════════════════════════
 // WBS SYNC SYSTEM
 // ═══════════════════════════════════════
-
-const WBS_BUCKET_LABELS = {
-  epc:                 'EPC / Third-Party',
-  owners_construction: "Owner's Construction",
-  modules:             'Modules (PV)',
-  bess_equipment:      'BESS Equipment',
-  substation_hv:       'Substation / HV',
-  development:         'Development & Other',
-};
+// WBS_BUCKET_LABELS defined above in WBS BUDGET TAB section
 
 let _wbsIncoming = null; // parsed data from JSONBin
 let _wbsDiffState = {};  // {assetId_bucketKey: true/false} = accepted/ignored
