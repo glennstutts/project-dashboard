@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<!-- WBS Uploader v1.0 — Eagle Springs Solar + BESS -->
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WBS Budget Uploader</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg:     #0d0f12;
+    --bg2:    #13161b;
+    --bg3:    #1a1e25;
+    --bg4:    #222730;
+    --border: #2a2f3a;
+    --border2:#353c4a;
+    --text:   #e8eaf0;
+    --text2:  #9ca3b0;
+    --text3:  #5c6478;
+    --green:  #22c55e;
+    --green-dim:#16a34a22;
+    --yellow: #eab308;
+    --yellow-dim:#ca8a0422;
+    --red:    #ef4444;
+    --red-dim:#dc262622;
+    --blue:   #3b82f6;
+    --blue-dim:#2563eb22;
+    --accent: #6366f1;
+    --accent-dim:#4f46e522;
+    --orange: #f97316;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 13px; }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header h1 { font-size: 15px; font-weight: 700; letter-spacing: .5px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .sync-dot { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); }
+
+  .main { padding: 20px; max-width: 1100px; margin: 0 auto; }
+
+  .btn { padding: 6px 14px; border-radius: 4px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); cursor: pointer; font-size: 11px; font-family: 'Syne', sans-serif; font-weight: 600; }
+  .btn:hover { background: var(--bg4); color: var(--text); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn-primary:hover:not(:disabled) { background: #4f46e5; }
+  .btn-success { background: var(--green); border-color: var(--green); color: #000; }
+  .btn-success:hover:not(:disabled) { background: #16a34a; }
+
+  .section-title { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed var(--border2); border-radius: 10px;
+    padding: 40px 20px; text-align: center;
+    cursor: pointer; transition: all .2s; margin-bottom: 20px;
+    background: var(--bg2);
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--accent); background: var(--accent-dim); }
+  .drop-zone.loaded { border-color: var(--green); background: var(--green-dim); }
+  .drop-zone .icon { font-size: 36px; margin-bottom: 10px; }
+  .drop-zone .title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .drop-zone .sub { font-size: 11px; color: var(--text3); }
+  #file-input { display: none; }
+
+  /* Config panel */
+  .config-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; margin-bottom: 20px;
+  }
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-row { margin-bottom: 0; }
+  .form-row label { font-size: 10px; color: var(--text3); display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  .form-row input, .form-row select {
+    width: 100%; padding: 7px 10px; background: var(--bg3);
+    border: 1px solid var(--border2); border-radius: 4px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 11px;
+  }
+  .form-row input:focus, .form-row select:focus { outline: none; border-color: var(--accent); }
+
+  /* Preview table */
+  .preview-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden; margin-bottom: 20px;
+  }
+  .preview-header {
+    padding: 12px 16px; background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .preview-asset { margin-bottom: 4px; }
+  .preview-asset-title {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 6px;
+    font-weight: 700; font-size: 13px;
+    border-top: 1px solid var(--border);
+  }
+  .asset-tag { font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 600; }
+  .tag-pv   { background: var(--green-dim); color: var(--green); }
+  .tag-bess { background: var(--blue-dim);  color: var(--blue); }
+
+  table.prev { width: 100%; border-collapse: collapse; }
+  table.prev th { font-size: 9px; text-transform: uppercase; letter-spacing: .4px; color: var(--text3); padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--border); font-weight: 600; }
+  table.prev th:first-child { text-align: left; }
+  table.prev td { padding: 7px 10px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 11px; text-align: right; }
+  table.prev td:first-child { text-align: left; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 11px; }
+  table.prev tr:last-child td { border-bottom: none; }
+  table.prev tr.total-row td { background: var(--bg3); font-weight: 700; border-top: 1px solid var(--border2); }
+  table.prev tr:hover td { background: var(--bg3); }
+
+  .flag { font-size: 11px; }
+
+  /* Status log */
+  .log-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 20px; }
+  .log-entry { font-family: 'DM Mono', monospace; font-size: 10px; padding: 3px 0; }
+  .log-ok   { color: var(--green); }
+  .log-warn { color: var(--yellow); }
+  .log-err  { color: var(--red); }
+  .log-info { color: var(--text3); }
+
+  /* Action bar */
+  .action-bar { display: flex; gap: 10px; align-items: center; padding: 14px 0; }
+  .action-bar .spacer { flex: 1; }
+
+  /* Info box */
+  .info-box { background: var(--blue-dim); border: 1px solid var(--blue); border-radius: 6px; padding: 10px 14px; font-size: 11px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+  .info-box strong { color: var(--blue); }
+
+  /* Badge */
+  .badge { font-size: 9px; padding: 2px 7px; border-radius: 10px; font-family: 'DM Mono', monospace; font-weight: 600; }
+  .badge-green  { background: var(--green-dim);  color: var(--green); }
+  .badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+  .badge-red    { background: var(--red-dim);    color: var(--red); }
+
+  .meta-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
+  .meta-item { font-size: 11px; color: var(--text3); }
+  .meta-item strong { color: var(--text2); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📊 WBS Budget Uploader</h1>
+  <div class="header-right">
+    <span class="sync-dot" id="sync-status">● Ready</span>
+    <button class="btn" onclick="downloadBackup()" id="btn-backup" disabled>💾 Backup JSON</button>
+    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">📂 Browse File</button>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFileInput(this)"/>
+
+<div class="main">
+
+  <!-- Info -->
+  <div class="info-box">
+    <strong>How to use:</strong> Download the WBS Budget Excel from SharePoint → drag it onto the drop zone below → review the extracted values → push to dashboard. Takes under 30 seconds.
+    <br/>Extracts from: <strong>Financial Model Outputs (WIP)</strong> (Solar) and <strong>Financial Model Outputs (WI (2)</strong> (BESS).
+  </div>
+
+  <!-- Drop Zone -->
+  <div class="drop-zone" id="drop-zone"
+    ondragover="event.preventDefault(); this.classList.add('drag-over')"
+    ondragleave="this.classList.remove('drag-over')"
+    ondrop="handleDrop(event)"
+    onclick="document.getElementById('file-input').click()">
+    <div class="icon">📁</div>
+    <div class="title" id="dz-title">Drop WBS Excel File Here</div>
+    <div class="sub" id="dz-sub">or click to browse · .xlsx files only</div>
+  </div>
+
+  <!-- Config -->
+  <div class="config-card">
+    <div class="section-title" style="margin-bottom:12px">Configuration</div>
+    <div class="config-grid">
+      <div class="form-row">
+        <label>JSONBin API Key</label>
+        <input id="cfg-apikey" type="password" placeholder="$2a$10$..." oninput="saveConfig()"/>
+      </div>
+      <div class="form-row">
+        <label>WBS Bin ID <span style="color:var(--text3);font-weight:400">(auto-created on first push)</span></label>
+        <input id="cfg-binid" placeholder="Will be created automatically" oninput="saveConfig()"/>
+      </div>
+      <div class="form-row">
+        <label>Use contingency-inclusive values?</label>
+        <select id="cfg-contingency" onchange="saveConfig(); if(_parsed) renderPreview(_parsed)">
+          <option value="with">Yes — w/ contingency (recommended)</option>
+          <option value="without">No — w/o contingency</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Dashboard WBS Bin ID <span style="color:var(--text3);font-weight:400">(if separate)</span></label>
+        <input id="cfg-dashbin" placeholder="Same as WBS Bin ID if not separate"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Preview (hidden until file loaded) -->
+  <div id="preview-section" style="display:none">
+
+    <div class="meta-row" id="meta-row"></div>
+
+    <div class="preview-card" id="preview-card">
+      <div class="preview-header">
+        <div class="section-title" style="margin-bottom:0">Extracted Budget Data — Preview</div>
+        <div style="font-size:10px;color:var(--text3)" id="preview-timestamp"></div>
+      </div>
+      <div id="preview-body"></div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-card" id="log-card">
+      <div class="section-title" style="margin-bottom:8px">Extraction Log</div>
+      <div id="log-body"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-bar">
+      <button class="btn" onclick="resetUploader()">↩ Reset / New File</button>
+      <div class="spacer"></div>
+      <button class="btn" onclick="downloadBackup()" id="btn-backup2">💾 Download JSON</button>
+      <button class="btn btn-success" onclick="pushToJSONBin()" id="btn-push">🚀 Push to Dashboard</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════
+let _parsed = null;
+let _logs   = [];
+
+function saveConfig(){
+  localStorage.setItem('wbs_uploader_config', JSON.stringify({
+    apiKey:      document.getElementById('cfg-apikey').value,
+    binId:       document.getElementById('cfg-binid').value,
+    contingency: document.getElementById('cfg-contingency').value,
+    dashBinId:   document.getElementById('cfg-dashbin').value,
+  }));
+}
+
+function loadConfig(){
+  const c = localStorage.getItem('wbs_uploader_config');
+  if(!c) return;
+  const cfg = JSON.parse(c);
+  document.getElementById('cfg-apikey').value      = cfg.apiKey      || '';
+  document.getElementById('cfg-binid').value        = cfg.binId       || '';
+  document.getElementById('cfg-contingency').value  = cfg.contingency || 'with';
+  document.getElementById('cfg-dashbin').value      = cfg.dashBinId   || '';
+}
+
+function getConfig(){
+  return {
+    apiKey:      document.getElementById('cfg-apikey').value.trim(),
+    binId:       document.getElementById('cfg-binid').value.trim(),
+    contingency: document.getElementById('cfg-contingency').value,
+    dashBinId:   document.getElementById('cfg-dashbin').value.trim(),
+  };
+}
+
+// ═══════════════════════════════════════
+// BUCKET MAPPING
+// ═══════════════════════════════════════
+// Maps WBS Financial Model bucket labels → dashboard wbsBuckets keys
+const SOLAR_BUCKET_MAP = {
+  'Development Spend':                     'development',
+  'Third-Party EPC Cost':                  'epc',
+  "Owner's Construction Costs":            'owners_construction',
+  'Modules':                               'modules',
+  'Non-Refundable Interconnection':        'development',   // rolls into development
+  'Early Stage Dev Fee / NLR Fee':         'development',
+  'Land Acquisition':                      'development',
+  'Main Power Transformer (MPT)':          'substation_hv',
+  'Sponsor Substation, Transformers & Gen-Tie': 'substation_hv',
+};
+
+const BESS_BUCKET_MAP = {
+  'Development Spend':                     'development',
+  'Third-Party EPC Cost':                  'epc',
+  "Owner's Construction Costs":            'owners_construction',
+  'Storage (Containerized BESS)':          'bess_equipment',
+  'Storage (Power Conversion System)':     'bess_equipment',
+  'Main Power Transformer (MPT)':          'substation_hv',
+  'Sponsor Substation, Transformers & Gen-Tie': 'substation_hv',
+  'Non-Refundable Interconnection':        'development',
+  'Early Stage Dev Fee / NLR Fee':         'development',
+  'Land Acquisition':                      'development',
+  'Modules':                               'modules',
+};
+
+const BUCKET_LABELS = {
+  epc:                 'EPC / Third-Party',
+  owners_construction: "Owner's Construction",
+  modules:             'Modules (PV)',
+  bess_equipment:      'BESS Equipment',
+  substation_hv:       'Substation / HV',
+  development:         'Development & Other',
+};
+
+function emptyBuckets(){
+  return { epc:0, owners_construction:0, modules:0, bess_equipment:0, substation_hv:0, development:0 };
+}
+
+// ═══════════════════════════════════════
+// FILE HANDLING
+// ═══════════════════════════════════════
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) processFile(file);
+}
+
+function handleFileInput(input){
+  const file = input.files[0];
+  if(file) processFile(file);
+  input.value = '';
+}
+
+function processFile(file){
+  if(!file.name.match(/\.xlsx?$/i)){
+    addLog('error', `File "${file.name}" is not an Excel file (.xlsx)`);
+    return;
+  }
+  _logs = [];
+  setStatus('loading', '↻ Parsing...');
+  addLog('info', `Reading: ${file.name} (${(file.size/1024).toFixed(1)} KB)`);
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      addLog('info', `Workbook loaded · ${wb.SheetNames.length} sheets found`);
+      const result = extractWBS(wb, file.name);
+      _parsed = result;
+      renderPreview(result);
+      document.getElementById('drop-zone').classList.add('loaded');
+      document.getElementById('dz-title').textContent = `✓ ${file.name}`;
+      document.getElementById('dz-sub').textContent = `Loaded ${new Date().toLocaleTimeString()}`;
+      document.getElementById('preview-section').style.display = 'block';
+      document.getElementById('btn-backup').disabled = false;
+      setStatus('idle', '● File loaded');
+    } catch(err){
+      addLog('error', `Parse error: ${err.message}`);
+      setStatus('error', '⚠ Parse failed');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════
+// EXTRACTION LOGIC
+// ═══════════════════════════════════════
+function extractWBS(wb, filename){
+  const sheets = wb.SheetNames;
+  const result = {
+    filename,
+    extractedAt: new Date().toISOString(),
+    assets: []
+  };
+
+  // Detect asset tabs by looking for separator sheets
+  // Pattern: EGS SOLAR>>> ... sheets ... EGS BESS>>> ... sheets
+  // Solar FMO: 'Financial Model Outputs (WIP)'
+  // BESS  FMO: 'Financial Model Outputs (WI (2)'
+
+  const solarFMO = sheets.find(s => s.includes('Financial Model Outputs (WIP') || s === 'Financial Model Outputs (WIP)');
+  const bessFMO  = sheets.find(s => s.includes('Financial Model Outputs (WI (2') || s === 'Financial Model Outputs (WI (2)');
+
+  // Also try to get project info from WBS Project Budget sheet
+  const wbsSheet  = sheets.find(s => s === 'WBS Project Budget');
+  const wbsSheet2 = sheets.find(s => s === 'WBS Project Budget (2)');
+
+  // Get project metadata
+  let projectName = 'Eagle Springs';
+  let ntp = '', cod = '';
+  if(wbsSheet){
+    const ws = wb.Sheets[wbsSheet];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    raw.forEach(row => {
+      const r = row.map(v => String(v||'').trim());
+      if(r.some(v => v.includes('Project Name'))) {
+        const idx = r.findIndex(v => v.includes('Project Name'));
+        if(r[idx+1]) projectName = r[idx+1];
+      }
+      if(r.some(v => v.includes('Expected NTP'))) {
+        const idx = r.findIndex(v => v.includes('Expected NTP'));
+        if(r[idx+1]) ntp = r[idx+1];
+      }
+      if(r.some(v => v.includes('Expected COD'))) {
+        const idx = r.findIndex(v => v.includes('Expected COD'));
+        if(r[idx+1]) cod = r[idx+1];
+      }
+    });
+  }
+
+  addLog('info', `Project: ${projectName} · NTP: ${ntp || 'unknown'} · COD: ${cod || 'unknown'}`);
+
+  // Extract Solar
+  if(solarFMO){
+    addLog('ok', `Solar FMO sheet found: "${solarFMO}"`);
+    const asset = extractFromFMO(wb, solarFMO, SOLAR_BUCKET_MAP, 'es-solar', 'ES Solar', 'solar', projectName);
+    result.assets.push(asset);
+  } else {
+    addLog('warn', 'Solar Financial Model Outputs sheet not found — skipping');
+  }
+
+  // Extract BESS
+  if(bessFMO){
+    addLog('ok', `BESS FMO sheet found: "${bessFMO}"`);
+    const asset = extractFromFMO(wb, bessFMO, BESS_BUCKET_MAP, 'es-bess', 'ES BESS', 'bess', projectName);
+    result.assets.push(asset);
+  } else {
+    addLog('warn', 'BESS Financial Model Outputs sheet not found — skipping');
+  }
+
+  // Also try to extract committed/JTD from Spend Curve Outputs
+  const spendSolar = sheets.find(s => s === '$ Spend Curve (Outputs)');
+  const spendBESS  = sheets.find(s => s === '$ Spend Curve (Outputs) (2)');
+
+  if(spendSolar){
+    const spendData = extractSpendCurve(wb, spendSolar);
+    const solarAsset = result.assets.find(a => a.id === 'es-solar');
+    if(solarAsset && spendData) mergeSpendData(solarAsset, spendData);
+  }
+  if(spendBESS){
+    const spendData = extractSpendCurve(wb, spendBESS);
+    const bessAsset = result.assets.find(a => a.id === 'es-bess');
+    if(bessAsset && spendData) mergeSpendData(bessAsset, spendData);
+  }
+
+  result.projectName = projectName;
+  result.ntp = ntp;
+  result.cod = cod;
+  return result;
+}
+
+function extractFromFMO(wb, sheetName, bucketMap, assetId, assetName, assetType, projectName){
+  const ws = wb.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  const cfg = getConfig();
+  const useWith = cfg.contingency !== 'without';
+  const valCol = useWith ? 9 : 8;  // col 9 = w/ contingency, col 8 = w/o
+
+  const buckets = emptyBuckets();
+  const unmapped = {};
+  let rowsProcessed = 0;
+
+  raw.forEach((row, i) => {
+    if(i < 3) return;
+    const bucketLabel = String(row[10] || '').trim();
+    if(!bucketLabel || bucketLabel === 'Finanial Model Bucket' || bucketLabel === 'Financial Model Bucket') return;
+
+    const val = parseFloat(row[valCol]) || 0;
+    if(val === 0) return;
+
+    const key = bucketMap[bucketLabel];
+    if(key){
+      buckets[key] += val;
+      rowsProcessed++;
+    } else {
+      // Track unmapped for logging
+      if(!unmapped[bucketLabel]) unmapped[bucketLabel] = 0;
+      unmapped[bucketLabel] += val;
+    }
+  });
+
+  addLog('ok', `${assetName}: extracted ${rowsProcessed} line items across ${Object.keys(buckets).filter(k=>buckets[k]>0).length} buckets`);
+  if(Object.keys(unmapped).length > 0){
+    Object.entries(unmapped).forEach(([label, val]) => {
+      addLog('warn', `  Unmapped: "${label}" ($${val.toLocaleString()}) — not included`);
+    });
+  }
+
+  return {
+    id: assetId,
+    name: assetName,
+    assetType,
+    siteGroup: 'eagle-springs',
+    projectName,
+    wbsBuckets: {
+      epc:                 { approved: buckets.epc,                 committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+      owners_construction: { approved: buckets.owners_construction, committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+      modules:             { approved: buckets.modules,             committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+      bess_equipment:      { approved: buckets.bess_equipment,      committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+      substation_hv:       { approved: buckets.substation_hv,       committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+      development:         { approved: buckets.development,         committed: 0, pending_co: 0, jtd: 0, fac: 0 },
+    }
+  };
+}
+
+function extractSpendCurve(wb, sheetName){
+  // Extract committed, JTD, FAC from Spend Curve Outputs
+  // Returns aggregated totals by L1 group
+  try {
+    const ws = wb.Sheets[sheetName];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+    // Find header row (has 'Original Budget')
+    let hdrRow = -1;
+    for(let i=0; i<20; i++){
+      if(raw[i] && raw[i].some(v => String(v).includes('Original Budget'))){ hdrRow = i; break; }
+    }
+    if(hdrRow < 0) return null;
+
+    // Col indices from header
+    const hdr = raw[hdrRow];
+    const colIdx = {};
+    hdr.forEach((h, i) => {
+      const s = String(h || '').toLowerCase();
+      if(s.includes('current approved budget'))  colIdx.approved   = i;
+      if(s.includes('current commitments') && !s.includes('pending')) colIdx.committed  = i;
+      if(s.includes('pending commitments'))       colIdx.pending_co = i;
+      if(s.includes('job-to-date costs') || s.includes('jtd')) colIdx.jtd = i;
+      if(s.includes('projected costs'))           colIdx.fac        = i;
+    });
+
+    // Sum all L3 leaf rows (most granular = most accurate)
+    let committed=0, pending_co=0, jtd=0, fac=0;
+    for(let i=hdrRow+1; i<raw.length; i++){
+      const row = raw[i];
+      const l3 = String(row[4] || '').trim();
+      if(!l3) continue; // only leaf rows
+
+      committed  += parseFloat(row[colIdx.committed]  || 0) || 0;
+      pending_co += parseFloat(row[colIdx.pending_co] || 0) || 0;
+      jtd        += parseFloat(row[colIdx.jtd]        || 0) || 0;
+      fac        += parseFloat(row[colIdx.fac]        || 0) || 0;
+    }
+    return { committed, pending_co, jtd, fac };
+  } catch(e) {
+    addLog('warn', `Spend curve extraction failed: ${e.message}`);
+    return null;
+  }
+}
+
+function mergeSpendData(asset, spend){
+  // Set committed/JTD/FAC on each bucket proportionally to approved budget
+  // (Simple approach: set totals on the largest bucket, or distribute evenly)
+  // For now: if total committed > 0, log it; user can refine per-bucket in dashboard
+  const totalApproved = Object.values(asset.wbsBuckets).reduce((s, b) => s + b.approved, 0);
+
+  Object.keys(asset.wbsBuckets).forEach(key => {
+    const b = asset.wbsBuckets[key];
+    const share = totalApproved > 0 ? b.approved / totalApproved : 0;
+    // Distribute spend proportionally to approved budget
+    b.committed  = Math.round(spend.committed  * share);
+    b.pending_co = Math.round(spend.pending_co * share);
+    b.jtd        = Math.round(spend.jtd        * share);
+    b.fac        = Math.round(spend.fac        * share);
+  });
+
+  if(spend.committed > 0 || spend.jtd > 0){
+    addLog('ok', `${asset.name}: committed=$${spend.committed.toLocaleString()} JTD=$${spend.jtd.toLocaleString()} FAC=$${spend.fac.toLocaleString()}`);
+  } else {
+    addLog('info', `${asset.name}: no actuals yet (pre-NTP or no spend posted)`);
+  }
+}
+
+// ═══════════════════════════════════════
+// PREVIEW RENDER
+// ═══════════════════════════════════════
+function fmt(n){ return n ? '$' + Math.round(n).toLocaleString() : '—'; }
+function varPct(fac, approved){
+  if(!approved || !fac) return { pct: 0, str: '—', color: 'var(--text3)' };
+  const p = (fac - approved) / approved;
+  const color = p > 0.07 ? 'var(--red)' : p > 0.03 ? 'var(--yellow)' : 'var(--green)';
+  return { pct: p, str: (p >= 0 ? '+' : '') + Math.round(p * 100) + '%', color };
+}
+function flag(approved, fac, committed, pending_co){
+  if(!approved) return '—';
+  const vp = fac > 0 ? (fac - approved) / approved : 0;
+  if(vp > 0.07 || committed > approved) return '🔴';
+  if(vp > 0.03 || pending_co > 0) return '🟡';
+  return '🟢';
+}
+
+function renderPreview(data){
+  // Meta
+  document.getElementById('meta-row').innerHTML = `
+    <div class="meta-item">📁 <strong>${data.filename}</strong></div>
+    <div class="meta-item">🏗 <strong>${data.projectName}</strong></div>
+    <div class="meta-item">📅 NTP: <strong>${data.ntp || '—'}</strong></div>
+    <div class="meta-item">🎯 COD: <strong>${data.cod || '—'}</strong></div>
+    <div class="meta-item">🕒 Extracted: <strong>${new Date(data.extractedAt).toLocaleString()}</strong></div>
+  `;
+
+  document.getElementById('preview-timestamp').textContent =
+    `${getConfig().contingency === 'with' ? 'w/ contingency' : 'w/o contingency'} · ${data.assets.length} asset${data.assets.length !== 1 ? 's' : ''}`;
+
+  let html = '';
+  data.assets.forEach(asset => {
+    const tag = asset.assetType === 'bess'
+      ? '<span class="asset-tag tag-bess">BESS</span>'
+      : '<span class="asset-tag tag-pv">PV</span>';
+
+    html += `<div class="preview-asset">
+      <div class="preview-asset-title">
+        <div style="width:8px;height:8px;border-radius:50%;background:${asset.assetType==='bess'?'#818cf8':'#6366f1'}"></div>
+        ${asset.name} ${tag}
+      </div>
+      <table class="prev">
+        <thead><tr>
+          <th>Bucket</th>
+          <th>Approved Budget</th>
+          <th>Committed</th>
+          <th>Pending CO</th>
+          <th>JTD Actual</th>
+          <th>FAC</th>
+          <th>Variance</th>
+          <th>Flag</th>
+        </tr></thead>
+        <tbody>`;
+
+    let totalApproved=0, totalCommitted=0, totalPendCO=0, totalJTD=0, totalFAC=0;
+
+    Object.entries(BUCKET_LABELS).forEach(([key, label]) => {
+      const b = asset.wbsBuckets[key] || {};
+      const ap = b.approved || 0, cm = b.committed || 0, pc = b.pending_co || 0, jt = b.jtd || 0, fc = b.fac || (cm > 0 ? cm : 0);
+      const vp = varPct(fc || ap, ap);
+      const fg = flag(ap, fc, cm, pc);
+      totalApproved  += ap;
+      totalCommitted += cm;
+      totalPendCO    += pc;
+      totalJTD       += jt;
+      totalFAC       += fc;
+
+      html += `<tr>
+        <td>${label}</td>
+        <td>${fmt(ap)}</td>
+        <td style="color:var(--text2)">${fmt(cm)}</td>
+        <td style="color:var(--yellow)">${fmt(pc)}</td>
+        <td style="color:var(--blue)">${fmt(jt)}</td>
+        <td style="font-weight:600">${fmt(fc || ap)}</td>
+        <td style="color:${vp.color}">${vp.str}</td>
+        <td>${fg}</td>
+      </tr>`;
+    });
+
+    const totalVP = varPct(totalFAC || totalApproved, totalApproved);
+    html += `<tr class="total-row">
+      <td>TOTAL</td>
+      <td>${fmt(totalApproved)}</td>
+      <td style="color:var(--text2)">${fmt(totalCommitted)}</td>
+      <td style="color:var(--yellow)">${fmt(totalPendCO)}</td>
+      <td style="color:var(--blue)">${fmt(totalJTD)}</td>
+      <td>${fmt(totalFAC || totalApproved)}</td>
+      <td style="color:${totalVP.color}">${totalVP.str}</td>
+      <td></td>
+    </tr>`;
+
+    html += `</tbody></table></div>`;
+  });
+
+  document.getElementById('preview-body').innerHTML = html;
+  renderLog();
+}
+
+// ═══════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════
+function addLog(type, msg){
+  _logs.push({ type, msg, ts: new Date().toLocaleTimeString() });
+  renderLog();
+}
+
+function renderLog(){
+  const el = document.getElementById('log-body');
+  if(!el) return;
+  el.innerHTML = _logs.map(l => {
+    const cls = l.type === 'ok' ? 'log-ok' : l.type === 'warn' ? 'log-warn' : l.type === 'error' ? 'log-err' : 'log-info';
+    const icon = l.type === 'ok' ? '✓' : l.type === 'warn' ? '⚠' : l.type === 'error' ? '✕' : '·';
+    return `<div class="log-entry ${cls}">[${l.ts}] ${icon} ${l.msg}</div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// JSONBIN SYNC
+// ═══════════════════════════════════════
+function setStatus(state, text){
+  const el = document.getElementById('sync-status');
+  const colors = { idle:'#22c55e', loading:'#eab308', error:'#ef4444', saving:'#eab308', saved:'#22c55e' };
+  el.textContent = text;
+  el.style.color = colors[state] || '#9ca3b0';
+}
+
+async function pushToJSONBin(){
+  if(!_parsed){ alert('No data to push.'); return; }
+  const cfg = getConfig();
+  if(!cfg.apiKey){ alert('Enter your JSONBin API key in the Configuration section.'); return; }
+
+  const btn = document.getElementById('btn-push');
+  btn.disabled = true;
+  btn.textContent = '↻ Pushing...';
+  setStatus('saving', '↻ Saving...');
+
+  // Build the WBS payload
+  const payload = {
+    lastUpdated: _parsed.extractedAt,
+    filename: _parsed.filename,
+    projectName: _parsed.projectName,
+    assets: _parsed.assets.map(a => ({
+      id: a.id,
+      name: a.name,
+      assetType: a.assetType,
+      siteGroup: a.siteGroup,
+      wbsBuckets: a.wbsBuckets,
+    }))
+  };
+
+  try {
+    let binId = cfg.binId;
+
+    if(!binId){
+      // Create new bin
+      addLog('info', 'Creating new JSONBin...');
+      const r = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Access-Key': cfg.apiKey,
+          'X-Bin-Private': 'true',
+          'X-Bin-Name': 'WBS Budget Data'
+        },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json();
+      if(!j.metadata?.id) throw new Error('Failed to create bin: ' + JSON.stringify(j));
+      binId = j.metadata.id;
+      document.getElementById('cfg-binid').value = binId;
+      saveConfig();
+      addLog('ok', `New WBS bin created: ${binId}`);
+      alert(`✓ New JSONBin created!\n\nBin ID: ${binId}\n\nCopy this ID into your Financial Dashboard's WBS Bin ID field so it can read this data.`);
+    } else {
+      // Update existing bin
+      const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Access-Key': cfg.apiKey },
+        body: JSON.stringify(payload)
+      });
+      if(!r.ok) throw new Error('Update failed: ' + r.status);
+      addLog('ok', `JSONBin updated: ${binId}`);
+    }
+
+    setStatus('saved', '✓ Pushed');
+    btn.textContent = '✓ Pushed!';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = '🚀 Push to Dashboard';
+      btn.style.background = '';
+      setStatus('idle', '● Ready');
+    }, 3000);
+
+    // Auto-download backup
+    downloadBackup();
+
+  } catch(err){
+    addLog('error', `Push failed: ${err.message}`);
+    setStatus('error', '⚠ Push failed');
+    btn.disabled = false;
+    btn.textContent = '🚀 Push to Dashboard';
+  }
+}
+
+// ═══════════════════════════════════════
+// BACKUP
+// ═══════════════════════════════════════
+function downloadBackup(){
+  if(!_parsed) return;
+  const payload = {
+    lastUpdated: _parsed.extractedAt,
+    filename: _parsed.filename,
+    projectName: _parsed.projectName,
+    assets: _parsed.assets
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `WBS_Backup_${_parsed.projectName.replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  addLog('ok', `Backup downloaded`);
+}
+
+// ═══════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════
+function resetUploader(){
+  _parsed = null;
+  _logs   = [];
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('drop-zone').classList.remove('loaded');
+  document.getElementById('dz-title').textContent = 'Drop WBS Excel File Here';
+  document.getElementById('dz-sub').textContent   = 'or click to browse · .xlsx files only';
+  document.getElementById('btn-backup').disabled  = true;
+  setStatus('idle', '● Ready');
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+loadConfig();
+</script>
+</body>
+</html>
