@@ -250,31 +250,57 @@
      PAGE: STAFFING
 ════════════════════════════════════════════ -->
 <div class="main page" id="page-staffing">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-    <div class="section-title" style="margin-bottom:0">Site Representatives</div>
-    <button class="btn btn-primary" onclick="openModal('add-staff')">+ Add Person</button>
+
+  <!-- Staffing sub-tabs -->
+  <div class="sub-tabs" style="margin-bottom:14px">
+    <div class="sub-tab active" id="stab-roster"  onclick="showStaffTab('roster')">Roster &amp; Allocation</div>
+    <div class="sub-tab"        id="stab-forecast" onclick="showStaffTab('forecast')">Forecast vs Actual</div>
+    <div class="sub-tab"        id="stab-burn"     onclick="showStaffTab('burn')">Burn Summary</div>
   </div>
 
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
-    <table class="staff-table" id="staff-master-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Monthly Rate ($)</th>
-          <th>Total Allocated %</th>
-          <th>Monthly Cost Allocated</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody id="staff-tbody"></tbody>
-    </table>
-    <div class="add-row-btn" onclick="openModal('add-staff')">+ Add site rep</div>
+  <!-- ── ROSTER TAB ── -->
+  <div id="stafftab-roster">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin-bottom:0">Site Representatives</div>
+      <button class="btn btn-primary" onclick="openModal('add-staff')">+ Add Person</button>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+      <table class="staff-table" id="staff-master-table">
+        <thead><tr>
+          <th>Name</th><th>Role</th><th>Monthly Rate ($)</th>
+          <th>Total Alloc %</th><th>Monthly Cost</th><th></th>
+        </tr></thead>
+        <tbody id="staff-tbody"></tbody>
+      </table>
+      <div class="add-row-btn" onclick="openModal('add-staff')">+ Add site rep</div>
+    </div>
+    <div class="section-title">Allocation by Project</div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <div id="alloc-matrix"></div>
+    </div>
   </div>
 
-  <div class="section-title">Allocation by Project</div>
-  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-    <div id="alloc-matrix"></div>
+  <!-- ── FORECAST vs ACTUAL TAB ── -->
+  <div id="stafftab-forecast" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin-bottom:0">Monthly Forecast vs Actual — by Asset</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select id="forecast-asset-filter" onchange="renderForecastTab()"
+          style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:5px 8px">
+          <option value="all">All Assets</option>
+        </select>
+        <button class="btn btn-primary" onclick="openModal('log-actual')">+ Log Actual</button>
+      </div>
+    </div>
+    <div id="forecast-table-body"></div>
   </div>
+
+  <!-- ── BURN SUMMARY TAB ── -->
+  <div id="stafftab-burn" style="display:none">
+    <div class="section-title" style="margin-bottom:12px">Staffing Burn Summary — Portfolio</div>
+    <div id="burn-summary-body"></div>
+  </div>
+
 </div>
 
 <!-- ══════════════════════════════════════════
@@ -526,10 +552,71 @@
   <div class="modal">
     <h3>Add Site Representative</h3>
     <div class="form-row"><label>Full Name</label><input id="m-staff-name" placeholder="Jane Smith"/></div>
+    <div class="form-row"><label>Role</label>
+      <select id="m-staff-role">
+        <option value="Construction Manager">Construction Manager</option>
+        <option value="Project Manager">Project Manager</option>
+        <option value="Commissioning Manager">Commissioning Manager</option>
+        <option value="QA/QC Inspector">QA/QC Inspector</option>
+        <option value="Owner's Engineer">Owner's Engineer</option>
+        <option value="Site Safety">Site Safety</option>
+        <option value="Scheduler">Scheduler</option>
+        <option value="Cost Controls">Cost Controls</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
     <div class="form-row"><label>Monthly Loaded Rate ($)</label><input id="m-staff-rate" type="number" placeholder="8500"/></div>
     <div class="modal-btns">
       <button class="btn btn-primary" onclick="saveStaff()">Add</button>
       <button class="btn" onclick="closeModal('add-staff')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log Actual Staffing Modal -->
+<div class="modal-overlay" id="modal-log-actual">
+  <div class="modal">
+    <h3>Log Actual Staffing Cost</h3>
+    <div class="form-row"><label>Asset</label>
+      <select id="m-actual-asset"></select>
+    </div>
+    <div class="form-row"><label>Month</label>
+      <input id="m-actual-month" type="month"/>
+    </div>
+    <div class="form-row"><label>Actual Cost ($)</label>
+      <input id="m-actual-cost" type="number" placeholder="0"/>
+    </div>
+    <div class="form-row"><label>Notes (optional)</label>
+      <input id="m-actual-notes" placeholder="e.g. Extra days, scope change"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveActualStaffing()">Log</button>
+      <button class="btn" onclick="closeModal('log-actual')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Asset Staffing Forecast Modal -->
+<div class="modal-overlay" id="modal-staff-forecast">
+  <div class="modal" style="width:540px">
+    <h3>Staffing Forecast — <span id="m-forecast-asset-name"></span></h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:14px">Set the staffing period and expected monthly cost. The 2/3 PV · 1/3 BESS split applies automatically for co-located assets.</p>
+    <div class="form-row"><label>Forecast Start Month</label>
+      <input id="m-forecast-start" type="month"/>
+    </div>
+    <div class="form-row"><label>Forecast End Month (editable anytime)</label>
+      <input id="m-forecast-end" type="month"/>
+    </div>
+    <div class="form-row"><label>Monthly Forecast Cost — this asset ($)</label>
+      <input id="m-forecast-monthly" type="number" placeholder="0"/>
+    </div>
+    <div id="m-forecast-split-note" style="font-size:10px;color:var(--blue);margin-top:4px;padding:6px 8px;background:var(--blue-dim);border-radius:4px;display:none">
+      ℹ Co-located site: PV will receive 2/3 · BESS will receive 1/3 of this amount
+    </div>
+    <input type="hidden" id="m-forecast-asset-id"/>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveForecast()">Save Forecast</button>
+      <button class="btn" onclick="closeModal('staff-forecast')">Cancel</button>
     </div>
   </div>
 </div>
@@ -757,7 +844,9 @@ function defaultData(){
       makeAsset('staccato',    'Staccato',    '#eab308', 'staccato',      'solar', 'active'),
     ],
     staff: [],
-    allocations: {} // {staffId: {projectId: pct}}
+    allocations: {},      // {staffId: {projectId: pct}}
+    staffingForecasts: {}, // {assetId: {start, end, monthly}}
+    staffingActuals: {}    // {assetId: {'YYYY-MM': amount}}
   };
 }
 
@@ -1093,6 +1182,18 @@ function renderPortfolio(){
 // ═══════════════════════════════════════
 // STAFFING RENDER
 // ═══════════════════════════════════════
+let _currentStaffTab = 'roster';
+
+function showStaffTab(tab){
+  _currentStaffTab = tab;
+  ['roster','forecast','burn'].forEach(t=>{
+    document.getElementById('stafftab-'+t).style.display = t===tab?'block':'none';
+    document.getElementById('stab-'+t).classList.toggle('active', t===tab);
+  });
+  if(tab==='forecast') renderForecastTab();
+  if(tab==='burn')     renderBurnSummary();
+}
+
 function renderStaffing(){
   const d=_finCache;
   const staff=d.staff||[];
@@ -1107,13 +1208,14 @@ function renderStaffing(){
     const pctColor=totalPct>100?'var(--red)':totalPct===100?'var(--green)':'var(--yellow)';
     tbody+=`<tr>
       <td><span contenteditable="true" onblur="updateStaffName('${s.id}',this.textContent)">${s.name}</span></td>
+      <td style="color:var(--text3);font-size:11px">${s.role||'—'}</td>
       <td><input class="money-input" type="number" value="${s.rate||0}" onchange="updateStaffRate('${s.id}',this.value)" style="width:90px"/></td>
       <td style="color:${pctColor};font-family:'DM Mono',monospace">${totalPct}%</td>
       <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
       <td><span onclick="deleteStaff('${s.id}')" style="cursor:pointer;color:var(--text3);font-size:11px" title="Remove">✕</span></td>
     </tr>`;
   });
-  document.getElementById('staff-tbody').innerHTML=tbody||'<tr><td colspan="5" class="empty-state">No staff added yet</td></tr>';
+  document.getElementById('staff-tbody').innerHTML=tbody||'<tr><td colspan="6" class="empty-state">No staff added yet</td></tr>';
 
   // Allocation matrix
   if(staff.length===0||projects.length===0){
@@ -1433,7 +1535,17 @@ function renderProjStaffing(proj){
 // ═══════════════════════════════════════
 // CRUD OPERATIONS
 // ═══════════════════════════════════════
-function openModal(type){ document.getElementById('modal-'+type).classList.add('open'); }
+function openModal(type){
+  // Pre-populate log-actual asset select
+  if(type==='log-actual'){
+    const projects=_finCache.projects||[];
+    const sel=document.getElementById('m-actual-asset');
+    if(sel) sel.innerHTML=projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    const monthEl=document.getElementById('m-actual-month');
+    if(monthEl && !monthEl.value) monthEl.value=todayMonth();
+  }
+  document.getElementById('modal-'+type).classList.add('open');
+}
 function closeModal(type){ document.getElementById('modal-'+type).classList.remove('open'); }
 
 function saveProject(){
@@ -1455,9 +1567,10 @@ function saveProject(){
 function saveStaff(){
   const name=document.getElementById('m-staff-name').value.trim();
   const rate=Number(document.getElementById('m-staff-rate').value||0);
+  const role=document.getElementById('m-staff-role').value||'Other';
   if(!name) return;
   if(!_finCache.staff) _finCache.staff=[];
-  const s={id:uid(), name, rate};
+  const s={id:uid(), name, rate, role};
   _finCache.staff.push(s);
   if(!_finCache.allocations) _finCache.allocations={};
   _finCache.allocations[s.id]={};
@@ -2269,6 +2382,418 @@ function applyWbsChanges(){
     statusEl.style.color = 'var(--green)';
     setTimeout(() => setWbsSyncStatus('loaded', localStorage.getItem('wbs_bin_id')), 4000);
   }
+}
+
+
+
+// ═══════════════════════════════════════
+// STAFFING FORECAST & ACTUALS
+// ═══════════════════════════════════════
+
+// ── Helpers ──
+function monthRange(start, end){
+  // Returns array of 'YYYY-MM' strings between start and end inclusive
+  const months = [];
+  if(!start || !end) return months;
+  let cur = new Date(start + '-01');
+  const endD = new Date(end + '-01');
+  while(cur <= endD){
+    months.push(cur.toISOString().slice(0,7));
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return months;
+}
+
+function monthLabel(ym){
+  const [y, m] = ym.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[parseInt(m)-1] + ' ' + y;
+}
+
+function todayMonth(){
+  return new Date().toISOString().slice(0,7);
+}
+
+// Co-located site pairs: share same siteGroup with solar+bess
+function getSitePair(assetId){
+  const proj = (_finCache.projects||[]).find(p=>p.id===assetId);
+  if(!proj || !proj.siteGroup) return null;
+  const siteAssets = (_finCache.projects||[]).filter(p=>p.siteGroup===proj.siteGroup);
+  if(siteAssets.length < 2) return null;
+  return siteAssets; // [solar, bess] for co-located
+}
+
+function isCoLocated(assetId){
+  return !!getSitePair(assetId);
+}
+
+// ── Forecast Setup ──
+function openForecastModal(assetId){
+  const proj = (_finCache.projects||[]).find(p=>p.id===assetId);
+  if(!proj) return;
+  const fc = (_finCache.staffingForecasts||{})[assetId] || {};
+  document.getElementById('m-forecast-asset-name').textContent = proj.name;
+  document.getElementById('m-forecast-asset-id').value = assetId;
+  document.getElementById('m-forecast-start').value   = fc.start   || '';
+  document.getElementById('m-forecast-end').value     = fc.end     || '';
+  document.getElementById('m-forecast-monthly').value = fc.monthly || '';
+  const note = document.getElementById('m-forecast-split-note');
+  note.style.display = isCoLocated(assetId) ? 'block' : 'none';
+  openModal('staff-forecast');
+}
+
+function saveForecast(){
+  const assetId = document.getElementById('m-forecast-asset-id').value;
+  const start   = document.getElementById('m-forecast-start').value;
+  const end     = document.getElementById('m-forecast-end').value;
+  const monthly = Number(document.getElementById('m-forecast-monthly').value||0);
+  if(!assetId || !start || !end){ alert('Fill in all fields.'); return; }
+  if(!_finCache.staffingForecasts) _finCache.staffingForecasts = {};
+  _finCache.staffingForecasts[assetId] = { start, end, monthly };
+  scheduleSave();
+  closeModal('staff-forecast');
+  renderForecastTab();
+  renderBurnSummary();
+}
+
+// ── Actual Logging ──
+function openLogActualModal(){
+  const projects = _finCache.projects||[];
+  const sel = document.getElementById('m-actual-asset');
+  sel.innerHTML = projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  document.getElementById('m-actual-month').value = todayMonth();
+  document.getElementById('m-actual-cost').value  = '';
+  document.getElementById('m-actual-notes').value = '';
+  openModal('log-actual');
+}
+
+function saveActualStaffing(){
+  const assetId = document.getElementById('m-actual-asset').value;
+  const month   = document.getElementById('m-actual-month').value;
+  const cost    = Number(document.getElementById('m-actual-cost').value||0);
+  const notes   = document.getElementById('m-actual-notes').value;
+  if(!assetId || !month){ alert('Select asset and month.'); return; }
+  if(!_finCache.staffingActuals) _finCache.staffingActuals = {};
+  if(!_finCache.staffingActuals[assetId]) _finCache.staffingActuals[assetId] = {};
+  _finCache.staffingActuals[assetId][month] = { cost, notes };
+  scheduleSave();
+  closeModal('log-actual');
+  renderForecastTab();
+  renderBurnSummary();
+}
+
+// ── Trend Logic ──
+function staffTrend(assetId){
+  const fc = (_finCache.staffingForecasts||{})[assetId];
+  if(!fc || !fc.start || !fc.end || !fc.monthly) return null;
+  const actuals = (_finCache.staffingActuals||{})[assetId] || {};
+  const today = todayMonth();
+  const months = monthRange(fc.start, today < fc.end ? today : fc.end);
+
+  let forecastCumulative = 0, actualCumulative = 0, postedMonths = 0;
+  months.forEach(m => {
+    forecastCumulative += fc.monthly;
+    if(actuals[m]) { actualCumulative += actuals[m].cost; postedMonths++; }
+  });
+
+  if(postedMonths === 0) return { status: 'none', label: 'No actuals yet', color: 'var(--text3)' };
+
+  const variance = actualCumulative - forecastCumulative;
+  const varPct   = forecastCumulative > 0 ? variance / forecastCumulative : 0;
+
+  // Project remaining: if we're tracking high, extrapolate
+  const avgActualPerMonth = postedMonths > 0 ? actualCumulative / postedMonths : 0;
+  const remainMonths = monthRange(today, fc.end).length;
+  const projectedTotal = actualCumulative + (avgActualPerMonth * remainMonths);
+  const totalForecast  = fc.monthly * monthRange(fc.start, fc.end).length;
+  const projectedOverrun = projectedTotal - totalForecast;
+
+  let status, label, color;
+  if(varPct > 0.15 || projectedOverrun > totalForecast * 0.15){
+    status='red'; label='Over Budget'; color='var(--red)';
+  } else if(varPct > 0.05 || projectedOverrun > totalForecast * 0.05){
+    status='yellow'; label='Trending High'; color='var(--yellow)';
+  } else if(varPct < -0.05){
+    status='blue'; label='Trending Low'; color='var(--blue)';
+  } else {
+    status='green'; label='On Track'; color='var(--green)';
+  }
+
+  return {
+    status, label, color, varPct,
+    forecastCumulative, actualCumulative, variance,
+    projectedTotal, totalForecast, projectedOverrun,
+    postedMonths, avgActualPerMonth
+  };
+}
+
+// ── Forecast Tab Render ──
+function renderForecastTab(){
+  const projects = _finCache.projects||[];
+  const filter   = document.getElementById('forecast-asset-filter');
+
+  // Populate filter
+  filter.innerHTML = '<option value="all">All Assets</option>' +
+    projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+
+  const selectedId = filter.value;
+  const assets = selectedId === 'all' ? projects : projects.filter(p=>p.id===selectedId);
+
+  let html = '';
+  assets.forEach(proj => {
+    const fc      = (_finCache.staffingForecasts||{})[proj.id];
+    const actuals = (_finCache.staffingActuals||{})[proj.id] || {};
+    const trend   = staffTrend(proj.id);
+
+    // Asset header
+    const assetTag = proj.assetType === 'bess'
+      ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--blue-dim);color:var(--blue)">BESS</span>'
+      : proj.assetType === 'solar'
+      ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--green-dim);color:var(--green)">PV</span>'
+      : '';
+
+    html += `<div style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${proj.color}"></div>
+        <div style="font-weight:700;font-size:13px">${proj.name}</div>${assetTag}
+        ${trend ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--bg3);color:${trend.color};margin-left:4px;font-family:'DM Mono',monospace">${trend.label}</span>` : ''}
+        <button onclick="openForecastModal('${proj.id}')" style="margin-left:auto;font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);background:var(--bg3);color:var(--accent);cursor:pointer;font-family:'Syne',sans-serif">
+          ${fc ? '✎ Edit Forecast' : '+ Set Forecast'}
+        </button>
+      </div>`;
+
+    if(!fc){
+      html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:20px;text-align:center;color:var(--text3);font-size:11px">
+        No forecast set — click "+ Set Forecast" to define the staffing period and monthly cost
+      </div></div>`;
+      return;
+    }
+
+    // Build month columns
+    const months = monthRange(fc.start, fc.end);
+    if(months.length === 0){
+      html += `<div style="color:var(--text3);font-size:11px;padding:10px">Invalid date range</div></div>`;
+      return;
+    }
+
+    const today = todayMonth();
+
+    // Summary stats
+    const totalForecast = fc.monthly * months.length;
+    const postedMonths  = months.filter(m => actuals[m]);
+    const totalActual   = postedMonths.reduce((s,m) => s+(actuals[m].cost||0), 0);
+    const remaining     = totalForecast - totalActual;
+
+    html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Total Forecast</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(totalForecast)}</div>
+        <div style="font-size:9px;color:var(--text3)">${months.length} months · ${fmt(fc.monthly)}/mo</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Actual to Date</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px;color:${trend&&trend.status==='red'?'var(--red)':trend&&trend.status==='yellow'?'var(--yellow)':'var(--text)'}">${fmt(totalActual)}</div>
+        <div style="font-size:9px;color:var(--text3)">${postedMonths.length} of ${months.length} months posted</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Remaining Forecast</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(remaining)}</div>
+        <div style="font-size:9px;color:var(--text3)">${months.filter(m=>m>today).length} months remaining</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid ${trend?trend.color:'var(--border)'};border-radius:6px;padding:10px">
+        <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Trend</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px;color:${trend?trend.color:'var(--text3)'}">
+          ${trend&&trend.varPct!==undefined ? (trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%' : '—'}
+        </div>
+        <div style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
+      </div>
+    </div>`;
+
+    // Monthly table - show max 18 months, centered on today
+    const visMonths = months.slice(0, 24); // cap at 24 for readability
+    html += `<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:${visMonths.length*90+180}px">
+        <thead><tr style="background:var(--bg3)">
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:7px 10px;text-align:left;font-weight:600;white-space:nowrap">Month</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:7px 10px;text-align:right;font-weight:600">Forecast</th>
+          ${visMonths.map(m=>`<th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:${m===today?'var(--accent)':'var(--text3)'};padding:7px 6px;text-align:center;font-weight:600;white-space:nowrap">${monthLabel(m)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">Forecast</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}/mo</td>
+            ${visMonths.map(m=>`<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}</td>`).join('')}
+          </tr>
+          <tr>
+            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">Actual</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">per month</td>
+            ${visMonths.map(m=>{
+              const a = actuals[m];
+              const isPast = m <= today;
+              const isFuture = m > today;
+              if(a){
+                const v = a.cost||0;
+                const diff = v - fc.monthly;
+                const color = diff > fc.monthly*0.15 ? 'var(--red)' : diff > fc.monthly*0.05 ? 'var(--yellow)' : diff < -fc.monthly*0.05 ? 'var(--blue)' : 'var(--green)';
+                return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:${color};background:${m===today?'var(--accent-dim)':''}"
+                  title="${a.notes||''}">${fmt(v)}</td>`;
+              }
+              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:${m===today?'var(--accent-dim)':''}">
+                ${isPast?`<span onclick="openLogActualForMonth('${proj.id}','${m}')" style="cursor:pointer;font-size:9px;color:var(--accent);text-decoration:underline">+ Log</span>`:'—'}</td>`;
+            }).join('')}
+          </tr>
+          <tr style="background:var(--bg3)">
+            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:10px;color:var(--text3);text-transform:uppercase">Variance</td>
+            <td style="padding:7px 10px"></td>
+            ${visMonths.map(m=>{
+              const a = actuals[m];
+              if(!a) return '<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">—</td>';
+              const diff = (a.cost||0) - fc.monthly;
+              const color = diff > 0 ? 'var(--red)' : 'var(--green)';
+              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:${color}">${diff>=0?'+':''}${fmt(diff)}</td>`;
+            }).join('')}
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
+    if(months.length > 24){
+      html += `<div style="font-size:10px;color:var(--text3);padding:6px 0">Showing first 24 of ${months.length} months</div>`;
+    }
+    html += '</div>';
+  });
+
+  document.getElementById('forecast-table-body').innerHTML = html ||
+    '<div class="empty-state">No assets found</div>';
+}
+
+function openLogActualForMonth(assetId, month){
+  const projects = _finCache.projects||[];
+  const sel = document.getElementById('m-actual-asset');
+  sel.innerHTML = projects.map(p=>`<option value="${p.id}" ${p.id===assetId?'selected':''}>${p.name}</option>`).join('');
+  document.getElementById('m-actual-month').value = month;
+  const existing = ((_finCache.staffingActuals||{})[assetId]||{})[month];
+  document.getElementById('m-actual-cost').value  = existing ? existing.cost : '';
+  document.getElementById('m-actual-notes').value = existing ? existing.notes||'' : '';
+  openModal('log-actual');
+}
+
+// ── Burn Summary Render ──
+function renderBurnSummary(){
+  const projects = _finCache.projects||[];
+  const today    = todayMonth();
+
+  // Group by site
+  const siteOrder  = ['eagle-springs','lupinus','lupinus-2','staccato'];
+  const siteLabels = {'eagle-springs':'Eagle Springs','lupinus':'Lupinus','lupinus-2':'Lupinus 2','staccato':'Staccato'};
+  const siteColors = {'eagle-springs':'#6366f1','lupinus':'#22c55e','lupinus-2':'#f97316','staccato':'#eab308'};
+
+  let html = '';
+  let grandForecast=0, grandActual=0;
+
+  siteOrder.forEach(siteId => {
+    const assets = projects.filter(p=>p.siteGroup===siteId);
+    if(!assets.length) return;
+
+    let siteForecast=0, siteActual=0;
+    const assetRows = assets.map(proj => {
+      const fc    = (_finCache.staffingForecasts||{})[proj.id];
+      const trend = staffTrend(proj.id);
+      if(!fc) return { proj, fc:null, trend, totalForecast:0, totalActual:0 };
+
+      const months       = monthRange(fc.start, fc.end);
+      const totalForecast = fc.monthly * months.length;
+      const actuals      = (_finCache.staffingActuals||{})[proj.id]||{};
+      const totalActual  = Object.values(actuals).reduce((s,v)=>s+(v.cost||0),0);
+      siteForecast += totalForecast;
+      siteActual   += totalActual;
+      grandForecast += totalForecast;
+      grandActual   += totalActual;
+      return { proj, fc, trend, totalForecast, totalActual };
+    });
+
+    const siteVarPct = siteForecast > 0 ? (siteActual-siteForecast)/siteForecast : 0;
+    const siteColor  = siteVarPct > 0.15?'var(--red)':siteVarPct>0.05?'var(--yellow)':siteVarPct<-0.05?'var(--blue)':'var(--green)';
+
+    html += `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:6px 6px 0 0;border:1px solid var(--border)">
+        <div style="font-size:10px;font-weight:700;color:${siteColors[siteId]||'var(--text3)'};text-transform:uppercase;letter-spacing:.6px">◆ ${siteLabels[siteId]||siteId}</div>
+        <div style="margin-left:auto;display:flex;gap:16px;font-family:'DM Mono',monospace;font-size:11px">
+          <span style="color:var(--text3)">Forecast: ${fmt(siteForecast)}</span>
+          <span style="color:${siteColor}">Actual: ${fmt(siteActual)}</span>
+          <span style="color:${siteColor}">${siteForecast>0?(siteVarPct>=0?'+':'')+Math.round(siteVarPct*100)+'%':'—'}</span>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
+        <thead><tr style="background:var(--bg3)">
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:left;font-weight:600">Asset</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Period</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Monthly Rate</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Total Forecast</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Actual to Date</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Remaining</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:center;font-weight:600">Trend</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:center;font-weight:600"></th>
+        </tr></thead>
+        <tbody>`;
+
+    assetRows.forEach(({proj, fc, trend, totalForecast, totalActual}) => {
+      const assetTag = proj.assetType==='bess'
+        ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:var(--blue-dim);color:var(--blue)">BESS</span>'
+        : proj.assetType==='solar'
+        ? '<span style="font-size:8px;padding:1px 4px;border-radius:3px;background:var(--green-dim);color:var(--green)">PV</span>'
+        : '';
+      const remaining = totalForecast - totalActual;
+      const trendBadge = trend
+        ? `<span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4);color:${trend.color}">${trend.label}</span>`
+        : '<span style="font-size:9px;color:var(--text3)">No forecast</span>';
+      const period = fc ? `${fc.start} → ${fc.end}` : '—';
+
+      html += `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:6px;height:6px;border-radius:50%;background:${proj.color}"></div>
+            <span style="font-weight:600;font-size:11px">${proj.name}</span>${assetTag}
+          </div>
+        </td>
+        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${period}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px">${fc?fmt(fc.monthly):'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px">${fmt(totalForecast)||'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${trend?trend.color:'var(--text3)'}">${fmt(totalActual)||'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fc?fmt(remaining):'—'}</td>
+        <td style="padding:8px 10px;text-align:center">${trendBadge}</td>
+        <td style="padding:8px 10px;text-align:center">
+          <span onclick="openForecastModal('${proj.id}')" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span>
+        </td>
+      </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+  });
+
+  // Grand total
+  if(grandForecast > 0){
+    const gVarPct = (grandActual-grandForecast)/grandForecast;
+    const gColor  = gVarPct>0.15?'var(--red)':gVarPct>0.05?'var(--yellow)':gVarPct<-0.05?'var(--blue)':'var(--green)';
+    html = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Total Forecast</div>
+        <div style="font-family:'DM Mono',monospace;font-size:20px">${fmt(grandForecast)}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Actual to Date</div>
+        <div style="font-family:'DM Mono',monospace;font-size:20px;color:${gColor}">${fmt(grandActual)}</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid ${gColor};border-radius:8px;padding:14px 16px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Variance</div>
+        <div style="font-family:'DM Mono',monospace;font-size:20px;color:${gColor}">${(gVarPct>=0?'+':'')+Math.round(gVarPct*100)}%</div>
+        <div style="font-size:10px;color:${gColor}">${grandActual>grandForecast?'Tracking over':'Tracking under'} forecast</div>
+      </div>
+    </div>` + html;
+  }
+
+  document.getElementById('burn-summary-body').innerHTML = html ||
+    '<div class="empty-state" style="padding:40px">No forecast data set yet — go to Forecast vs Actual tab to set up staffing periods</div>';
 }
 
 
