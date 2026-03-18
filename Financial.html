@@ -1116,10 +1116,10 @@ function renderPortfolio(){
         <td>${fmt(p.epcContract)}</td>
         <td style="color:${t.approvedCOs>0?'var(--orange)':'var(--text3)'}">${t.approvedCOs>0?'+'+fmt(t.approvedCOs):'—'}</td>
         <td style="font-weight:600">${fmt(t.totalContract)}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:11px">${wbsApproved}</td>
+        <td style="font-family:"DM Mono",monospace;font-size:11px">${wbsApproved}</td>
         <td>${fmt(t.invoiced)}</td>
         <td style="color:var(--green)">${fmt(t.paid)}</td>
-        <td style="font-family:'DM Mono',monospace;font-size:11px">${facVsBudget}</td>
+        <td style="font-family:"DM Mono",monospace;font-size:11px">${facVsBudget}</td>
         <td>
           ${t.completePct}%
           <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(t.completePct,100)}%;background:${barColor}"></div></div>
@@ -1170,7 +1170,7 @@ function renderPortfolio(){
       const color=p>90?'var(--red)':p>70?'var(--yellow)':'var(--green)';
       ocHtml+=`<div style="background:var(--bg3);border-radius:6px;padding:10px">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${cat}</div>
-        <div style="font-family:'DM Mono',monospace;font-size:13px">${fmt(v.actual)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.budget)}</span></div>
+        <div style="font-family:"DM Mono",monospace;font-size:13px">${fmt(v.actual)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.budget)}</span></div>
         <div style="height:4px;background:var(--border);border-radius:2px;margin-top:6px"><div style="width:${p}%;height:100%;background:${color};border-radius:2px"></div></div>
       </div>`;
     });
@@ -1210,8 +1210,8 @@ function renderStaffing(){
       <td><span contenteditable="true" onblur="updateStaffName('${s.id}',this.textContent)">${s.name}</span></td>
       <td style="color:var(--text3);font-size:11px">${s.role||'—'}</td>
       <td><input class="money-input" type="number" value="${s.rate||0}" onchange="updateStaffRate('${s.id}',this.value)" style="width:90px"/></td>
-      <td style="color:${pctColor};font-family:'DM Mono',monospace">${totalPct}%</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
+      <td style="color:${pctColor};font-family:"DM Mono",monospace">${totalPct}%</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
       <td><span onclick="deleteStaff('${s.id}')" style="cursor:pointer;color:var(--text3);font-size:11px" title="Remove">✕</span></td>
     </tr>`;
   });
@@ -1225,7 +1225,7 @@ function renderStaffing(){
 
   let html=`<table class="staff-table" style="width:100%"><thead><tr>
     <th>Name</th>
-    <th style="font-family:'DM Mono',monospace">Rate/mo</th>
+    <th style="font-family:"DM Mono",monospace">Rate/mo</th>
     ${projects.map(p=>`<th style="color:${p.color}">${p.name}</th>`).join('')}
     <th>Total %</th>
     <th>Monthly Cost</th>
@@ -1238,15 +1238,15 @@ function renderStaffing(){
     const pctColor=totalPct>100?'var(--red)':totalPct===100?'var(--green)':'var(--yellow)';
     html+=`<tr>
       <td style="font-weight:600">${s.name}</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${fmt(s.rate)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--text3)">${fmt(s.rate)}</td>
       ${projects.map(p=>`<td>
         <input class="alloc-input" type="number" min="0" max="100" value="${allocs[p.id]||0}"
           onchange="updateAlloc('${s.id}','${p.id}',this.value)"
           placeholder="0" style="width:50px"/>
         <span style="font-size:9px;color:var(--text3)">%</span>
       </td>`).join('')}
-      <td style="color:${pctColor};font-family:'DM Mono',monospace;font-weight:600">${totalPct}%</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
+      <td style="color:${pctColor};font-family:"DM Mono",monospace;font-weight:600">${totalPct}%</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--accent)">${fmt(monthlyCost)}</td>
     </tr>`;
   });
 
@@ -1258,10 +1258,10 @@ function renderStaffing(){
         const a=(_finCache.allocations[s.id]||{})[p.id]||0;
         return sum+Number(s.rate||0)*(a/100);
       },0);
-      return `<td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(projTotal)}</td>`;
+      return `<td style="font-family:"DM Mono",monospace;color:var(--accent)">${fmt(projTotal)}</td>`;
     }).join('')}
     <td></td>
-    <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(staff.reduce((sum,s)=>{
+    <td style="font-family:"DM Mono",monospace;color:var(--accent)">${fmt(staff.reduce((sum,s)=>{
       const allocs=d.allocations[s.id]||{};
       const tp=projects.reduce((a,p)=>a+Number(allocs[p.id]||0),0);
       return sum+Number(s.rate||0)*(tp/100);
@@ -1464,17 +1464,17 @@ function renderPayApps(proj){
     apps.forEach((a,i)=>{
       const net=Number(a.amount||0)*(1-Number(a.retPct||10)/100);
       html+=`<div class="payapp-row">
-        <div style="font-family:'DM Mono',monospace;font-weight:600">App #${a.num||i+1}</div>
+        <div style="font-family:"DM Mono",monospace;font-weight:600">App #${a.num||i+1}</div>
         <div>${a.desc||'—'}</div>
-        <div style="text-align:right;font-family:'DM Mono',monospace">${fmt(a.amount)}</div>
-        <div style="text-align:right;font-family:'DM Mono',monospace;color:var(--text3)">${fmt(Number(a.amount||0)*Number(a.retPct||10)/100)}</div>
-        <div style="text-align:right;font-family:'DM Mono',monospace;font-weight:600">${fmt(net)}</div>
+        <div style="text-align:right;font-family:"DM Mono",monospace">${fmt(a.amount)}</div>
+        <div style="text-align:right;font-family:"DM Mono",monospace;color:var(--text3)">${fmt(Number(a.amount||0)*Number(a.retPct||10)/100)}</div>
+        <div style="text-align:right;font-family:"DM Mono",monospace;font-weight:600">${fmt(net)}</div>
         <div>
           <span class="payapp-status status-${a.status||'pending'}" onclick="cyclePayAppStatus('${proj.id}',${i})" title="Click to advance status">
             ${(a.status||'pending').charAt(0).toUpperCase()+(a.status||'pending').slice(1)}
           </span>
         </div>
-        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${a.date||'—'}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">${a.date||'—'}</div>
       </div>`;
     });
   }
@@ -1506,8 +1506,8 @@ function renderOwnerCosts(proj){
     tbody+=`<tr>
       <td><span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${c.category||'Other'}</span></td>
       <td>${c.desc||'—'}</td>
-      <td style="font-family:'DM Mono',monospace">${fmt(c.budget)}</td>
-      <td style="font-family:'DM Mono',monospace;color:${over?'var(--red)':'var(--green)'}">${fmt(c.actual)}</td>
+      <td style="font-family:"DM Mono",monospace">${fmt(c.budget)}</td>
+      <td style="font-family:"DM Mono",monospace;color:${over?'var(--red)':'var(--green)'}">${fmt(c.actual)}</td>
       <td style="color:var(--text3)">${c.date||'—'}</td>
       <td><span onclick="deleteOC('${proj.id}',${i})" style="cursor:pointer;color:var(--text3);font-size:11px">✕</span></td>
     </tr>`;
@@ -1524,8 +1524,8 @@ function renderProjStaffing(proj){
     tbody+=`<tr>
       <td>${s.name}</td>
       <td><input class="alloc-input" type="number" min="0" max="100" value="${a}" onchange="updateAlloc('${s.id}','${proj.id}',this.value)"/>%</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${fmt(s.rate)}</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--accent)">${fmt(cost)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--text3)">${fmt(s.rate)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--accent)">${fmt(cost)}</td>
     </tr>`;
   });
   if(tbody==='') tbody='<tr><td colspan="4" class="empty-state">No staff allocated to this project. Go to Staffing tab to allocate.</td></tr>';
@@ -1705,11 +1705,11 @@ function renderEquipment(proj){
         <div style="font-size:9px;color:var(--text3)">${item.category||''}</div>
       </td>
       <td style="color:var(--text3);font-size:11px">${item.vendor||'—'}</td>
-      <td style="font-family:'DM Mono',monospace">${fmt(item.po)}</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--yellow)">${fmt(item.invoiced)}</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(item.paid)}</td>
+      <td style="font-family:"DM Mono",monospace">${fmt(item.po)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--yellow)">${fmt(item.invoiced)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--green)">${fmt(item.paid)}</td>
       <td><span class="co-status" style="${sc}">${item.status||'pending'}</span></td>
-      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${item.date||'—'}</td>
+      <td style="font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">${item.date||'—'}</td>
       <td><span onclick="deleteEquipment('${proj.id}',${i})" style="cursor:pointer;color:var(--text3);font-size:11px">✕</span></td>
     </tr>`;
   });
@@ -1728,7 +1728,7 @@ function renderEquipment(proj){
   summaryEl.innerHTML=Object.entries(cats).map(([cat,v])=>`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
       <div style="font-size:10px;color:var(--text3);margin-bottom:4px">${cat}</div>
-      <div style="font-family:'DM Mono',monospace;font-size:13px">${fmt(v.invoiced)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.po)}</span></div>
+      <div style="font-family:"DM Mono",monospace;font-size:13px">${fmt(v.invoiced)} <span style="font-size:10px;color:var(--text3)">/ ${fmt(v.po)}</span></div>
       <div style="font-size:9px;color:var(--green);margin-top:2px">${fmt(v.paid)} paid</div>
     </div>`).join('');
 }
@@ -1820,10 +1820,10 @@ function renderLoan(proj){
   const statusColors={'funded':'background:var(--green-dim);color:var(--green)','approved':'background:var(--blue-dim);color:var(--blue)','pending':'background:var(--yellow-dim);color:var(--yellow)','partial':'background:var(--orange);color:white'};
 
   document.getElementById('loan-setup-display').innerHTML=`
-    <div class="budget-row"><div class="budget-label">Lender</div><div class="budget-amount" style="font-family:'Syne',sans-serif">${loan.lender||'Not set'}</div></div>
+    <div class="budget-row"><div class="budget-label">Lender</div><div class="budget-amount" style="font-family:"Syne",sans-serif">${loan.lender||'Not set'}</div></div>
     <div class="budget-row"><div class="budget-label">Total Facility</div><div class="budget-amount">${fmt(loan.amount)}</div></div>
     <div class="budget-row"><div class="budget-label">Interest Rate</div><div class="budget-amount">${loan.rate||0}%</div></div>
-    <div class="budget-row"><div class="budget-label">Maturity</div><div class="budget-amount" style="font-family:'Syne',sans-serif;font-size:11px">${loan.maturity||'—'}</div></div>
+    <div class="budget-row"><div class="budget-label">Maturity</div><div class="budget-amount" style="font-family:"Syne",sans-serif;font-size:11px">${loan.maturity||'—'}</div></div>
     <div class="budget-row"><div class="budget-label">Holdback / Reserve</div><div class="budget-amount" style="color:var(--text3)">${fmt(loan.holdback)}</div></div>`;
 
   document.getElementById('loan-draw-summary').innerHTML=`
@@ -1844,11 +1844,11 @@ function renderLoan(proj){
     tbody+=`<tr>
       <td style="font-weight:600">Draw ${d.num||i+1}</td>
       <td>${d.desc||'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-weight:600">${fmt(d.amount)}</td>
-      <td style="font-family:'DM Mono',monospace;color:var(--text3)">${pct}%</td>
+      <td style="font-family:"DM Mono",monospace;font-weight:600">${fmt(d.amount)}</td>
+      <td style="font-family:"DM Mono",monospace;color:var(--text3)">${pct}%</td>
       <td><span class="co-status" style="${sc}">${d.status}</span></td>
-      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${d.reqDate||'—'}</td>
-      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--green)">${d.fundDate||'—'}</td>
+      <td style="font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">${d.reqDate||'—'}</td>
+      <td style="font-family:"DM Mono",monospace;font-size:10px;color:var(--green)">${d.fundDate||'—'}</td>
       <td><span onclick="deleteDraw('${proj.id}',${i})" style="cursor:pointer;color:var(--text3)">✕</span></td>
     </tr>`;
   });
@@ -1941,10 +1941,10 @@ function renderContingency(proj){
   let tbody='';
   (proj.contingencyUsed||[]).forEach((c,i)=>{
     tbody+=`<tr>
-      <td style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${c.date||'—'}</td>
+      <td style="font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">${c.date||'—'}</td>
       <td><span style="font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${c.category}</span></td>
       <td>${c.desc||'—'}</td>
-      <td style="font-family:'DM Mono',monospace;color:${burnColor}">${fmt(c.amount)}</td>
+      <td style="font-family:"DM Mono",monospace;color:${burnColor}">${fmt(c.amount)}</td>
       <td style="font-size:11px;color:var(--text3)">${c.approver||'—'}</td>
       <td><span onclick="deleteContingencyUse('${proj.id}',${i})" style="cursor:pointer;color:var(--text3)">✕</span></td>
     </tr>`;
@@ -1965,22 +1965,22 @@ function renderChangeOrders(proj){
   document.getElementById('co-summary-strip').innerHTML=`
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
       <div style="font-size:9px;color:var(--text3);margin-bottom:4px">PENDING RISK</div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--yellow)">${fmt(pendingTotal)}</div>
+      <div style="font-family:"DM Mono",monospace;font-size:16px;color:var(--yellow)">${fmt(pendingTotal)}</div>
       <div style="font-size:9px;color:var(--text3)">${pending.length} CO${pending.length!==1?'s':''}</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
       <div style="font-size:9px;color:var(--text3);margin-bottom:4px">APPROVED IMPACT</div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--orange)">${fmt(approvedTotal)}</div>
+      <div style="font-family:"DM Mono",monospace;font-size:16px;color:var(--orange)">${fmt(approvedTotal)}</div>
       <div style="font-size:9px;color:var(--text3)">${approved.length} CO${approved.length!==1?'s':''}</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
       <div style="font-size:9px;color:var(--text3);margin-bottom:4px">REJECTED</div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--text3)">${fmt(rejectedTotal)}</div>
+      <div style="font-family:"DM Mono",monospace;font-size:16px;color:var(--text3)">${fmt(rejectedTotal)}</div>
       <div style="font-size:9px;color:var(--text3)">${rejected.length} CO${rejected.length!==1?'s':''}</div>
     </div>
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
       <div style="font-size:9px;color:var(--text3);margin-bottom:4px">TOTAL EXPOSURE</div>
-      <div style="font-family:'DM Mono',monospace;font-size:16px;color:var(--red)">${fmt(pendingTotal+approvedTotal)}</div>
+      <div style="font-family:"DM Mono",monospace;font-size:16px;color:var(--red)">${fmt(pendingTotal+approvedTotal)}</div>
       <div style="font-size:9px;color:var(--text3)">pending + approved</div>
     </div>`;
 
@@ -1991,7 +1991,7 @@ function renderChangeOrders(proj){
       return `<tr>
         <td style="font-weight:600">${co.num||'CO-'+(realIdx+1)}</td>
         <td>${co.desc||'—'}</td>
-        <td style="font-family:'DM Mono',monospace;color:${color}">${fmt(co.amount)}</td>
+        <td style="font-family:"DM Mono",monospace;color:${color}">${fmt(co.amount)}</td>
         <td><span onclick="cycleCOStatus('${proj.id}',${realIdx})" style="cursor:pointer;font-size:9px;padding:2px 6px;border-radius:10px;background:var(--bg4)">${co.status}</span></td>
         <td style="color:var(--text3)">${co.date||'—'}</td>
         <td><span onclick="deleteCO('${proj.id}',${realIdx})" style="cursor:pointer;color:var(--text3)">✕</span></td>
@@ -2105,14 +2105,14 @@ function renderWbsBudget(proj){
                      : varPct > 0.03 || pending_co > 0 ? '🟡'
                      : approved > 0 ? '🟢' : '—';
     rows += `<tr>
-      <td style="font-family:'Syne',sans-serif;font-weight:600;text-align:left">${label}</td>
+      <td style="font-family:"Syne",sans-serif;font-weight:600;text-align:left">${label}</td>
       <td style="text-align:right">${approved>0?fmt(approved):'—'}</td>
       <td style="text-align:right;color:var(--text2)">${committed>0?fmt(committed):'—'}</td>
       <td style="text-align:right;color:var(--yellow)">${pending_co>0?fmt(pending_co):'—'}</td>
       <td style="text-align:right;color:var(--blue)">${jtd>0?fmt(jtd):'—'}</td>
       <td style="text-align:right;font-weight:600">${fac>0?fmt(fac):'—'}</td>
       <td style="text-align:right;color:${variance>0?'var(--red)':variance<0?'var(--green)':'var(--text3)'}">${fac>0&&approved>0?(variance>=0?'+':'')+fmt(variance):'—'}</td>
-      <td style="text-align:right;color:${flagColor};font-family:'DM Mono',monospace">${approved>0?(varPct>=0?'+':'')+Math.round(varPct*100)+'%':'—'}</td>
+      <td style="text-align:right;color:${flagColor};font-family:"DM Mono",monospace">${approved>0?(varPct>=0?'+':'')+Math.round(varPct*100)+'%':'—'}</td>
       <td style="text-align:center">${flag}</td>
       <td style="text-align:right"><span onclick="editWbsBucket('${proj.id}','${key}')" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span></td>
     </tr>`;
@@ -2123,14 +2123,14 @@ function renderWbsBudget(proj){
   const totalVarPct   = w.approved > 0 ? totalVariance / w.approved : 0;
   const totalColor    = totalVarPct > 0.07 ? 'var(--red)' : totalVarPct > 0.03 ? 'var(--yellow)' : 'var(--green)';
   rows += `<tr style="background:var(--bg3);font-weight:700;border-top:2px solid var(--border2)">
-    <td style="font-family:'Syne',sans-serif;text-align:left;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--text3)">TOTAL</td>
+    <td style="font-family:"Syne",sans-serif;text-align:left;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--text3)">TOTAL</td>
     <td style="text-align:right">${w.approved>0?fmt(w.approved):'—'}</td>
     <td style="text-align:right;color:var(--text2)">${w.committed>0?fmt(w.committed):'—'}</td>
     <td style="text-align:right;color:var(--yellow)">${w.pending_co>0?fmt(w.pending_co):'—'}</td>
     <td style="text-align:right;color:var(--blue)">${w.jtd>0?fmt(w.jtd):'—'}</td>
     <td style="text-align:right">${w.fac>0?fmt(w.fac):'—'}</td>
     <td style="text-align:right;color:${totalVariance>0?'var(--red)':totalVariance<0?'var(--green)':'var(--text3)'}">${w.fac>0&&w.approved>0?(totalVariance>=0?'+':'')+fmt(totalVariance):'—'}</td>
-    <td style="text-align:right;color:${totalColor};font-family:'DM Mono',monospace">${w.approved>0?(totalVarPct>=0?'+':'')+Math.round(totalVarPct*100)+'%':'—'}</td>
+    <td style="text-align:right;color:${totalColor};font-family:"DM Mono",monospace">${w.approved>0?(totalVarPct>=0?'+':'')+Math.round(totalVarPct*100)+'%':'—'}</td>
     <td></td><td></td>
   </tr>`;
 
@@ -2290,19 +2290,19 @@ function renderWbsDiff(incoming){
       const rowBg = !hasChange ? '' : isAccepted ? 'background:rgba(34,197,94,.04)' : 'background:rgba(239,68,68,.04)';
 
       html += `<tr style="${rowBg};border-bottom:1px solid var(--border)">
-        <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">${label}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${curVal > 0 ? '$'+Math.round(curVal).toLocaleString() : '—'}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:600">${inVal > 0 ? '$'+Math.round(inVal).toLocaleString() : '—'}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${diffColor}">${diffFmt}</td>
+        <td style="padding:7px 10px;font-family:"Syne",sans-serif;font-weight:600;font-size:11px">${label}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:var(--text2)">${curVal > 0 ? '$'+Math.round(curVal).toLocaleString() : '—'}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;font-weight:600">${inVal > 0 ? '$'+Math.round(inVal).toLocaleString() : '—'}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:${diffColor}">${diffFmt}</td>
         <td style="padding:7px 10px;text-align:center">
           ${hasChange
             ? `<div style="display:flex;gap:6px;justify-content:center">
                 <button onclick="setWbsDiffState('${stateKey}', true)"
-                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${isAccepted?'var(--green)':'var(--border2)'};background:${isAccepted?'var(--green-dim)':'var(--bg3)'};color:${isAccepted?'var(--green)':'var(--text3)'};cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">
+                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${isAccepted?'var(--green)':'var(--border2)'};background:${isAccepted?'var(--green-dim)':'var(--bg3)'};color:${isAccepted?'var(--green)':'var(--text3)'};cursor:pointer;font-family:"Syne",sans-serif;font-weight:600">
                   ✓ Accept
                 </button>
                 <button onclick="setWbsDiffState('${stateKey}', false)"
-                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${!isAccepted&&hasChange?'var(--red)':'var(--border2)'};background:${!isAccepted&&hasChange?'var(--red-dim)':'var(--bg3)'};color:${!isAccepted&&hasChange?'var(--red)':'var(--text3)'};cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">
+                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${!isAccepted&&hasChange?'var(--red)':'var(--border2)'};background:${!isAccepted&&hasChange?'var(--red-dim)':'var(--bg3)'};color:${!isAccepted&&hasChange?'var(--red)':'var(--text3)'};cursor:pointer;font-family:"Syne",sans-serif;font-weight:600">
                   ✕ Ignore
                 </button>
               </div>`
@@ -2556,8 +2556,8 @@ function renderForecastTab(){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="width:8px;height:8px;border-radius:50%;background:${proj.color}"></div>
         <div style="font-weight:700;font-size:13px">${proj.name}</div>${assetTag}
-        ${trend ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--bg3);color:${trend.color};margin-left:4px;font-family:'DM Mono',monospace">${trend.label}</span>` : ''}
-        <button onclick="openForecastModal('${proj.id}')" style="margin-left:auto;font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);background:var(--bg3);color:var(--accent);cursor:pointer;font-family:'Syne',sans-serif">
+        ${trend ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:var(--bg3);color:${trend.color};margin-left:4px;font-family:"DM Mono",monospace">${trend.label}</span>` : ''}
+        <button onclick="openForecastModal('${proj.id}')" style="margin-left:auto;font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);background:var(--bg3);color:var(--accent);cursor:pointer;font-family:"Syne",sans-serif">
           ${fc ? '✎ Edit Forecast' : '+ Set Forecast'}
         </button>
       </div>`;
@@ -2587,22 +2587,22 @@ function renderForecastTab(){
     html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Total Forecast</div>
-        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(totalForecast)}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:14px">${fmt(totalForecast)}</div>
         <div style="font-size:9px;color:var(--text3)">${months.length} months · ${fmt(fc.monthly)}/mo</div>
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Actual to Date</div>
-        <div style="font-family:'DM Mono',monospace;font-size:14px;color:${trend&&trend.status==='red'?'var(--red)':trend&&trend.status==='yellow'?'var(--yellow)':'var(--text)'}">${fmt(totalActual)}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:14px;color:${trend&&trend.status==='red'?'var(--red)':trend&&trend.status==='yellow'?'var(--yellow)':'var(--text)'}">${fmt(totalActual)}</div>
         <div style="font-size:9px;color:var(--text3)">${postedMonths.length} of ${months.length} months posted</div>
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Remaining Forecast</div>
-        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(remaining)}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:14px">${fmt(remaining)}</div>
         <div style="font-size:9px;color:var(--text3)">${months.filter(m=>m>today).length} months remaining</div>
       </div>
       <div style="background:var(--bg2);border:1px solid ${trend?trend.color:'var(--border)'};border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Trend</div>
-        <div style="font-family:'DM Mono',monospace;font-size:14px;color:${trend?trend.color:'var(--text3)'}">
+        <div style="font-family:"DM Mono",monospace;font-size:14px;color:${trend?trend.color:'var(--text3)'}">
           ${trend&&trend.varPct!==undefined ? (trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%' : '—'}
         </div>
         <div style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
@@ -2620,13 +2620,13 @@ function renderForecastTab(){
         </tr></thead>
         <tbody>
           <tr>
-            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">Forecast</td>
-            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}/mo</td>
-            ${visMonths.map(m=>`<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}</td>`).join('')}
+            <td style="padding:7px 10px;font-family:"Syne",sans-serif;font-weight:600;font-size:11px">Forecast</td>
+            <td style="padding:7px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}/mo</td>
+            ${visMonths.map(m=>`<td style="padding:7px 6px;text-align:center;font-family:"DM Mono",monospace;font-size:11px;color:var(--text2)">${fmt(fc.monthly)}</td>`).join('')}
           </tr>
           <tr>
-            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">Actual</td>
-            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3)">per month</td>
+            <td style="padding:7px 10px;font-family:"Syne",sans-serif;font-weight:600;font-size:11px">Actual</td>
+            <td style="padding:7px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:var(--text3)">per month</td>
             ${visMonths.map(m=>{
               const a = actuals[m];
               const isPast = m <= today;
@@ -2635,22 +2635,22 @@ function renderForecastTab(){
                 const v = a.cost||0;
                 const diff = v - fc.monthly;
                 const color = diff > fc.monthly*0.15 ? 'var(--red)' : diff > fc.monthly*0.05 ? 'var(--yellow)' : diff < -fc.monthly*0.05 ? 'var(--blue)' : 'var(--green)';
-                return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:${color};background:${m===today?'var(--accent-dim)':''}"
+                return `<td style="padding:7px 6px;text-align:center;font-family:"DM Mono",monospace;font-size:11px;color:${color};background:${m===today?'var(--accent-dim)':''}"
                   title="${a.notes||''}">${fmt(v)}</td>`;
               }
-              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);background:${m===today?'var(--accent-dim)':''}">
+              return `<td style="padding:7px 6px;text-align:center;font-family:"DM Mono",monospace;font-size:11px;color:var(--text3);background:${m===today?'var(--accent-dim)':''}">
                 ${isPast?`<span onclick="openLogActualForMonth('${proj.id}','${m}')" style="cursor:pointer;font-size:9px;color:var(--accent);text-decoration:underline">+ Log</span>`:'—'}</td>`;
             }).join('')}
           </tr>
           <tr style="background:var(--bg3)">
-            <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:10px;color:var(--text3);text-transform:uppercase">Variance</td>
+            <td style="padding:7px 10px;font-family:"Syne",sans-serif;font-weight:600;font-size:10px;color:var(--text3);text-transform:uppercase">Variance</td>
             <td style="padding:7px 10px"></td>
             ${visMonths.map(m=>{
               const a = actuals[m];
-              if(!a) return '<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">—</td>';
+              if(!a) return '<td style="padding:7px 6px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">—</td>';
               const diff = (a.cost||0) - fc.monthly;
               const color = diff > 0 ? 'var(--red)' : 'var(--green)';
-              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:${color}">${diff>=0?'+':''}${fmt(diff)}</td>`;
+              return `<td style="padding:7px 6px;text-align:center;font-family:"DM Mono",monospace;font-size:10px;color:${color}">${diff>=0?'+':''}${fmt(diff)}</td>`;
             }).join('')}
           </tr>
         </tbody>
@@ -2718,7 +2718,7 @@ function renderBurnSummary(){
     html += `<div style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg3);border-radius:6px 6px 0 0;border:1px solid var(--border)">
         <div style="font-size:10px;font-weight:700;color:${siteColors[siteId]||'var(--text3)'};text-transform:uppercase;letter-spacing:.6px">◆ ${siteLabels[siteId]||siteId}</div>
-        <div style="margin-left:auto;display:flex;gap:16px;font-family:'DM Mono',monospace;font-size:11px">
+        <div style="margin-left:auto;display:flex;gap:16px;font-family:"DM Mono",monospace;font-size:11px">
           <span style="color:var(--text3)">Forecast: ${fmt(siteForecast)}</span>
           <span style="color:${siteColor}">Actual: ${fmt(siteActual)}</span>
           <span style="color:${siteColor}">${siteForecast>0?(siteVarPct>=0?'+':'')+Math.round(siteVarPct*100)+'%':'—'}</span>
@@ -2756,11 +2756,11 @@ function renderBurnSummary(){
             <span style="font-weight:600;font-size:11px">${proj.name}</span>${assetTag}
           </div>
         </td>
-        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">${period}</td>
-        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px">${fc?fmt(fc.monthly):'—'}</td>
-        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px">${fmt(totalForecast)||'—'}</td>
-        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${trend?trend.color:'var(--text3)'}">${fmt(totalActual)||'—'}</td>
-        <td style="padding:8px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fc?fmt(remaining):'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:10px;color:var(--text3)">${period}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px">${fc?fmt(fc.monthly):'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px">${fmt(totalForecast)||'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:${trend?trend.color:'var(--text3)'}">${fmt(totalActual)||'—'}</td>
+        <td style="padding:8px 10px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;color:var(--text2)">${fc?fmt(remaining):'—'}</td>
         <td style="padding:8px 10px;text-align:center">${trendBadge}</td>
         <td style="padding:8px 10px;text-align:center">
           <span onclick="openForecastModal('${proj.id}')" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span>
@@ -2778,15 +2778,15 @@ function renderBurnSummary(){
     html = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Total Forecast</div>
-        <div style="font-family:'DM Mono',monospace;font-size:20px">${fmt(grandForecast)}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:20px">${fmt(grandForecast)}</div>
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px 16px">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Actual to Date</div>
-        <div style="font-family:'DM Mono',monospace;font-size:20px;color:${gColor}">${fmt(grandActual)}</div>
+        <div style="font-family:"DM Mono",monospace;font-size:20px;color:${gColor}">${fmt(grandActual)}</div>
       </div>
       <div style="background:var(--bg2);border:1px solid ${gColor};border-radius:8px;padding:14px 16px">
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">Portfolio Variance</div>
-        <div style="font-family:'DM Mono',monospace;font-size:20px;color:${gColor}">${(gVarPct>=0?'+':'')+Math.round(gVarPct*100)}%</div>
+        <div style="font-family:"DM Mono",monospace;font-size:20px;color:${gColor}">${(gVarPct>=0?'+':'')+Math.round(gVarPct*100)}%</div>
         <div style="font-size:10px;color:${gColor}">${grandActual>grandForecast?'Tracking over':'Tracking under'} forecast</div>
       </div>
     </div>` + html;
@@ -2839,7 +2839,7 @@ window.addEventListener('beforeunload',e=>{
     <div style="background:var(--bg3);border-radius:6px;padding:10px 12px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
       <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0">WBS Bin ID</div>
       <input id="wbs-bin-id-input" placeholder="69baf9e9aa77b81da9f84d4a"
-        style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:"DM Mono",monospace;font-size:11px;padding:5px 8px"
         oninput="localStorage.setItem('wbs_bin_id', this.value)"/>
       <button class="btn btn-primary" onclick="fetchWbsBin()" style="flex-shrink:0">Load Latest</button>
     </div>
