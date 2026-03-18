@@ -95,6 +95,8 @@
   .add-subtask-btn:hover { color: var(--text); background: var(--bg3); }
 
   /* Subgroup priority colors */
+  .h-sub.sub-checked > .h-sub-label { opacity: 0.6; }
+  .h-sub.sub-checked > .h-sub-body { opacity: 0.5; pointer-events: none; }
   .h-sub-label.sub-priority-high { background: rgba(231,76,60,0.08); border-left: 2px solid #e74c3c; padding-left: 2px; border-radius: 3px; }
   .h-sub-label.sub-priority-med { background: rgba(241,196,15,0.08); border-left: 2px solid #f1c40f; padding-left: 2px; border-radius: 3px; }
   .h-sub-label.sub-priority-low { background: rgba(39,174,96,0.08); border-left: 2px solid #27ae60; padding-left: 2px; border-radius: 3px; }
@@ -656,13 +658,15 @@ function renderBox(boxId){
             // Manual priority override
             const subManualClass=sub.priority==='high'?'sub-priority-high':sub.priority==='med'?'sub-priority-med':sub.priority==='low'?'sub-priority-low':'';
             const finalSubClass=subManualClass||subPriorityClass;
-            html+=`<div class="h-sub">
+            const isSubChecked = sub.checked||false;
+            html+=`<div class="h-sub${isSubChecked?' sub-checked':''}">
           <div class="h-sub-label ${finalSubClass}" data-box="${boxId}" data-pi="${pi}" data-si="${si}">
             <span class="drag-handle sub-drag-handle" data-box="${boxId}" data-pi="${pi}" data-si="${si}">⠿</span>
             <div class="h-chevron ${sub.open?'open':''}">▶</div>
-            <input type="checkbox" class="sub-cb" ${sub.checked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" style="width:12px;height:12px;flex-shrink:0;accent-color:#27ae60;cursor:pointer;margin-right:2px"/>
+            <input type="checkbox" class="sub-cb" ${isSubChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" style="width:12px;height:12px;flex-shrink:0;accent-color:#27ae60;cursor:pointer;margin-right:2px"/>
             <div class="h-sub-dot" style="background:${sub.color||'#888'}"></div>
-            <span style="flex:1" contenteditable="true" spellcheck="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
+            <span style="flex:1;${isSubChecked?'text-decoration:line-through;opacity:0.5;':''}" contenteditable="true" spellcheck="true" class="sub-name" data-box="${boxId}" data-pi="${pi}" data-si="${si}">${sub.label}</span>
+            ${isSubChecked?`<span class="send-sub-complete" data-box="${boxId}" data-pi="${pi}" data-si="${si}" style="font-size:9px;color:#27ae60;cursor:pointer;padding:1px 5px;border:1px solid #27ae6044;border-radius:3px;white-space:nowrap">→ done</span><span class="uncheck-sub" data-box="${boxId}" data-pi="${pi}" data-si="${si}" style="font-size:9px;color:var(--text3);cursor:pointer;padding:1px 4px">↩</span>`:''}
             <span class="add-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-action="del-sub" style="color:#e74c3c">✕</span>
           </div>
 `;
@@ -1117,12 +1121,81 @@ function bindBox(boxId){
     });
   });
 
-  // Subgroup checkbox
+  // Subgroup checkbox — mark checked, show send/uncheck buttons
   el.querySelectorAll('.sub-cb').forEach(cb=>{
     cb.addEventListener('change',e=>{
       e.stopPropagation();
       const d=loadD();const{pi,si}=cb.dataset;
-      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].checked=cb.checked;
+      const sub=d[boxId].parents[parseInt(pi)].subs[parseInt(si)];
+      sub.checked=cb.checked;
+      sub.checkedAt=cb.checked?Date.now():null;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Send subgroup to completed log
+  el.querySelectorAll('.send-sub-complete').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si}=btn.dataset;
+      const sub=d[boxId].parents[parseInt(pi)].subs[parseInt(si)];
+      const parent=d[boxId].parents[parseInt(pi)];
+      const comp=loadC();
+      // Send subgroup itself as a parent item
+      const subItem={
+        id:uid(),
+        text:sub.label,
+        links:[],
+        isSubgroup:true,
+        box:BOXES.find(b=>b.id===boxId)?.label||boxId,
+        boxId,
+        parent:parent.label,
+        sub:sub.label,
+        subColor:sub.color||'#888',
+        priority:sub.priority||'none',
+        star:false,
+        createdDaysAgo:0,
+        completedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+        pi:parseInt(pi),si:parseInt(si),
+        // Carry all tasks as children
+        subtasks:(sub.tasks||[]).map(t=>({text:t.text,checked:t.checked||false}))
+      };
+      comp.unshift(subItem);
+      // Also send each task as a child grouped under subgroup
+      (sub.tasks||[]).forEach(t=>{
+        comp.unshift({
+          id:uid(),
+          text:t.text,
+          links:t.links||[],
+          isSubtask:true,
+          parentTask:sub.label,
+          isSubgroupChild:true,
+          box:BOXES.find(b=>b.id===boxId)?.label||boxId,
+          boxId,
+          parent:parent.label,
+          sub:sub.label,
+          subColor:sub.color||'#888',
+          priority:t.priority||'none',
+          star:t.star||false,
+          createdDaysAgo:ageDays(t.created||Date.now()),
+          completedAt:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}),
+          pi:parseInt(pi),si:parseInt(si)
+        });
+      });
+      saveC(comp);
+      // Remove subgroup from active
+      d[boxId].parents[parseInt(pi)].subs.splice(parseInt(si),1);
+      saveD(d);renderBox(boxId);renderCompleted();
+    });
+  });
+
+  // Uncheck subgroup
+  el.querySelectorAll('.uncheck-sub').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si}=btn.dataset;
+      const sub=d[boxId].parents[parseInt(pi)].subs[parseInt(si)];
+      sub.checked=false;sub.checkedAt=null;
       saveD(d);renderBox(boxId);
     });
   });
@@ -1279,8 +1352,22 @@ function renderCompleted(){
   // Group orphaned subtasks with their parent in completed log
   function buildGroups(items){
     const parents=[],orphans=[];
-    items.forEach(item=>{ if(!item.isSubtask) parents.push({item,origIdx:comp.indexOf(item),subs:[]}); else orphans.push({item,origIdx:comp.indexOf(item)}); });
-    orphans.forEach(o=>{ const p=parents.find(g=>g.item.text===o.item.parentTask&&g.item.sub===o.item.sub); if(p) p.subs.push(o); else parents.push({item:o.item,origIdx:o.origIdx,subs:[],orphan:true}); });
+    items.forEach(item=>{
+      // Subgroup items and regular tasks are both "parents" in the log
+      // isSubgroupChild items are children of a subgroup
+      if(!item.isSubtask&&!item.isSubgroupChild) parents.push({item,origIdx:comp.indexOf(item),subs:[]});
+      else orphans.push({item,origIdx:comp.indexOf(item)});
+    });
+    orphans.forEach(o=>{
+      // Match subgroup children to their subgroup parent
+      const parentText=o.item.parentTask||o.item.sub;
+      const p=parents.find(g=>
+        (g.item.isSubgroup && g.item.text===parentText && g.item.box===o.item.box) ||
+        (!g.item.isSubgroup && g.item.text===o.item.parentTask && g.item.sub===o.item.sub)
+      );
+      if(p) p.subs.push(o);
+      else parents.push({item:o.item,origIdx:o.origIdx,subs:[],orphan:true});
+    });
     return parents;
   }
   const groups=buildGroups(sorted);
@@ -1300,9 +1387,10 @@ function renderCompleted(){
     }
     const ageC=item.createdDaysAgo>=14?'#e74c3c':item.createdDaysAgo>=7?'#d4ac0d':'#27ae60';
     const isNote=item.isSubtask&&orphan;
-    html+=`<tr${isNote?' style="opacity:0.75"':''}>
+    const isSubgroupRow=item.isSubgroup||false;
+    html+=`<tr style="${isSubgroupRow?'background:var(--bg3);font-weight:600;':''}${isNote?'opacity:0.75;':''}">
       <td>
-        ${item.star?'⭐ ':''}${isNote?'<span style="font-size:9px;color:#888">↳ note</span> ':''}${item.text||'—'}
+        ${isSubgroupRow?'<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);margin-right:6px;border:1px solid var(--border2);border-radius:3px;padding:1px 5px">Subgroup</span> ':''}${item.star?'⭐ ':''}${isNote?'<span style="font-size:9px;color:#888">↳ note</span> ':''}${item.text||'—'}
         ${isNote&&item.parentTask?'<div style="font-size:9px;color:#666">on: '+item.parentTask+'</div>':''}
         ${(item.links||[]).map(l=>'<br><a class="link-label" href="'+l.url+'" target="_blank">🔗 '+l.label+'</a>').join('')}
         ${subs.length?'<div style="margin-top:4px;padding:3px 6px;border-left:2px solid #444;background:rgba(255,255,255,0.03)">'+subs.map(({item:st,origIdx:si})=>'<div style="font-size:10px;color:#aaa;display:flex;align-items:center;gap:6px;padding:1px 0"><span style="color:#27ae60">✓</span>'+st.text+'<span style="font-size:9px;color:#555;margin-left:auto">'+st.completedAt+'</span><span class="restore-btn" data-orig="'+si+'" title="Restore note">↩</span></div>').join('')+'</div>':''}
@@ -1336,9 +1424,26 @@ function bindCompControls(){
       const item=comp[idx];
       const d=loadD();
 
-      if(item.isSubtask){
+      if(item.isSubgroup){
+        // Restore entire subgroup with all its tasks
+        const parentArr=d[item.boxId]?.parents;
+        if(parentArr&&parentArr[item.pi]){
+          const restoredSub={
+            id:uid(),label:item.text,color:item.subColor||'#888',
+            open:true,checked:false,priority:item.priority||'none',
+            tasks:(item.subtasks||[]).map(st=>({
+              id:uid(),text:st.text,star:false,priority:'none',
+              created:Date.now(),links:[],subtasks:[]
+            }))
+          };
+          parentArr[item.pi].subs.push(restoredSub);
+          // Remove any child items that came with this subgroup
+          const childIdxs=comp.filter(c=>c.isSubgroupChild&&c.sub===item.text&&c.box===item.box)
+            .map(c=>comp.indexOf(c)).sort((a,b)=>b-a);
+          childIdxs.forEach(ci=>{if(ci>-1&&ci!==comp.indexOf(item))comp.splice(ci,1);});
+        }
+      } else if(item.isSubtask){
         // Restoring a subtask — find its parent task in open items and add as subtask
-        // If parent not found, restore as standalone task
         const parentBox=d[item.boxId]?.parents?.[item.pi]?.subs?.[item.si];
         if(parentBox){
           const parentTask=parentBox.tasks.find(t=>t.text===item.parentTask);
@@ -1346,7 +1451,6 @@ function bindCompControls(){
             if(!parentTask.subtasks)parentTask.subtasks=[];
             parentTask.subtasks.push({id:uid(),text:item.text,created:Date.now()});
           } else {
-            // Parent not in open items — restore as standalone task
             parentBox.tasks.push({id:uid(),text:item.text,star:false,priority:'none',created:Date.now(),links:[]});
           }
         }
