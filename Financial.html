@@ -179,6 +179,29 @@
   .project-colors { --c0:#6366f1;--c1:#22c55e;--c2:#f97316;--c3:#eab308;--c4:#3b82f6;--c5:#ec4899; }
   .page { display: none; }
   .page.active { display: block; }
+
+  /* Hide number input spinners */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+
+  /* Forecast inline cells */
+  .fc-cell-input {
+    width: 80px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text2);
+    font-family: "DM Mono", monospace;
+    font-size: 10px;
+    padding: 3px 5px;
+    text-align: center;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+  }
+  .fc-cell-input:hover { background: var(--bg3); border-color: var(--border2); }
+  .fc-cell-input:focus { background: var(--bg3); border-color: var(--accent); outline: none; color: var(--text); }
+  .fc-cell-input::placeholder { color: var(--text3); }
 </style>
 </head>
 <body class="project-colors">
@@ -190,6 +213,7 @@
     <span class="sync-status" id="sync-status">● Loading...</span>
     <span id="wbs-sync-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);display:none"></span>
     <button class="btn" onclick="openWbsSyncModal()" id="btn-wbs-sync" title="Review and apply WBS budget updates from uploader">📊 WBS Sync</button>
+    <button class="btn" onclick="openSettingsModal()" title="Set JSONBin API key">⚙ Settings</button>
     <button class="btn" onclick="downloadBackup()">💾 Backup</button>
     <button class="btn btn-primary" onclick="openModal('add-project')">+ Project</button>
   </div>
@@ -289,7 +313,7 @@
           style="background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;padding:5px 8px">
           <option value="all">All Assets</option>
         </select>
-        <button class="btn btn-primary" onclick="openModal('log-actual')">+ Log Actual</button>
+        <button class="btn" onclick="renderForecastTab()" style="font-size:10px">↻ Refresh</button>
       </div>
     </div>
     <div id="forecast-table-body"></div>
@@ -811,7 +835,11 @@
 // ═══════════════════════════════════════
 // STORAGE — JSONBin
 // ═══════════════════════════════════════
-const JSONBIN_KEY = '$2a$10$86feWKOrdTzcBxCyLxYqBubytpxcA5SeLRPSpG3w1jKR5N6dNRGxq';
+// JSONBin API key — set once via Settings or paste directly here
+function getJsonBinKey(){
+  return localStorage.getItem('jsonbin_api_key') || '$2a$10$86feWKOrdTzcBxCyLxYqBubytpxcA5SeLRPSpG3w1jKR5N6dNRGxq';
+}
+const JSONBIN_KEY = getJsonBinKey();
 const JSONBIN_URL_FIN = 'https://api.jsonbin.io/v3/b'; // Will create new bin on first save
 
 let _finCache = null;
@@ -2449,25 +2477,30 @@ function isCoLocated(assetId){
 function openForecastModal(assetId){
   const proj = (_finCache.projects||[]).find(p=>p.id===assetId);
   if(!proj) return;
+  // Open modal first so DOM elements exist
+  openModal('staff-forecast');
   const fc = (_finCache.staffingForecasts||{})[assetId] || {};
   document.getElementById('m-forecast-asset-name').textContent = proj.name;
   document.getElementById('m-forecast-asset-id').value = assetId;
-  document.getElementById('m-forecast-start').value   = fc.start   || '';
-  document.getElementById('m-forecast-end').value     = fc.end     || '';
-  document.getElementById('m-forecast-monthly').value = fc.monthly || '';
+  document.getElementById('m-forecast-start').value = fc.start || '';
+  document.getElementById('m-forecast-end').value   = fc.end   || '';
   const note = document.getElementById('m-forecast-split-note');
-  note.style.display = isCoLocated(assetId) ? 'block' : 'none';
-  openModal('staff-forecast');
+  if(note) note.style.display = isCoLocated(assetId) ? 'block' : 'none';
+  rebuildForecastRows();
 }
 
 function saveForecast(){
   const assetId = document.getElementById('m-forecast-asset-id').value;
   const start   = document.getElementById('m-forecast-start').value;
   const end     = document.getElementById('m-forecast-end').value;
-  const monthly = Number(document.getElementById('m-forecast-monthly').value||0);
-  if(!assetId || !start || !end){ alert('Fill in all fields.'); return; }
+  if(!assetId || !start || !end){ alert('Set start and end months first.'); return; }
+  const months = {};
+  document.querySelectorAll('#m-forecast-rows input[data-month]').forEach(inp => {
+    const v = Number(inp.value||0);
+    if(v > 0) months[inp.dataset.month] = v;
+  });
   if(!_finCache.staffingForecasts) _finCache.staffingForecasts = {};
-  _finCache.staffingForecasts[assetId] = { start, end, monthly };
+  _finCache.staffingForecasts[assetId] = { start, end, months };
   scheduleSave();
   closeModal('staff-forecast');
   renderForecastTab();
@@ -2626,25 +2659,25 @@ function renderForecastTab(){
     html += `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px">
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Total Forecast</div>
-        <div style="font-family:"DM Mono",monospace;font-size:14px">${fmt(totalForecast)}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(totalForecast)}</div>
         <div style="font-size:9px;color:var(--text3)">${months.length} months · avg ${fmt(Math.round(fcTotal(fc)/Math.max(months.length,1)))}/mo</div>
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Actual to Date</div>
-        <div style="font-family:"DM Mono",monospace;font-size:14px;color:${trend&&trend.status==='red'?'var(--red)':trend&&trend.status==='yellow'?'var(--yellow)':'var(--text)'}">${fmt(totalActual)}</div>
+        <div data-summary-actual="${proj.id}" style="font-family:'DM Mono',monospace;font-size:14px;color:${trend&&trend.status==='red'?'var(--red)':trend&&trend.status==='yellow'?'var(--yellow)':'var(--text)'}">${fmt(totalActual)}</div>
         <div style="font-size:9px;color:var(--text3)">${postedMonths.length} of ${months.length} months posted</div>
       </div>
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Remaining Forecast</div>
-        <div style="font-family:"DM Mono",monospace;font-size:14px">${fmt(remaining)}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px">${fmt(remaining)}</div>
         <div style="font-size:9px;color:var(--text3)">${months.filter(m=>m>today).length} months remaining</div>
       </div>
       <div style="background:var(--bg2);border:1px solid ${trend?trend.color:'var(--border)'};border-radius:6px;padding:10px">
         <div style="font-size:9px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px">Trend</div>
-        <div style="font-family:"DM Mono",monospace;font-size:14px;color:${trend?trend.color:'var(--text3)'}">
+        <div style="font-family:'DM Mono',monospace;font-size:14px;color:${trend?trend.color:'var(--text3)'}">
           ${trend&&trend.varPct!==undefined ? (trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%' : '—'}
         </div>
-        <div style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
+        <div data-summary-trend="${proj.id}" style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
       </div>
     </div>`;
 
@@ -2666,13 +2699,11 @@ function renderForecastTab(){
             <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${fmt(totalForecast)} total</td>
             ${visMonths.map(m=>{
               const fv = fcForMonth(fc, m);
-              return `<td style="padding:3px 2px;text-align:center">
+              return `<td style="padding:3px 2px;text-align:center;min-width:85px">
                 <input type="number" min="0" value="${fv||''}" placeholder="—"
+                  class="fc-cell-input"
                   onchange="updateInlineForecast('${proj.id}','${m}',this.value)"
-                  title="Forecast ${monthLabel(m)} — click to edit"
-                  style="width:68px;background:transparent;border:1px solid transparent;border-radius:3px;color:${fv?'var(--text2)':'var(--text3)'};font-family:'DM Mono',monospace;font-size:10px;padding:2px 3px;text-align:center"
-                  onfocus="this.style.background='var(--bg3)';this.style.borderColor='var(--accent)'"
-                  onblur="this.style.background='transparent';this.style.borderColor='transparent'"/>
+                  title="Forecast ${monthLabel(m)} — click to edit"/>
               </td>`;
             }).join('')}
           </tr>
@@ -2682,29 +2713,36 @@ function renderForecastTab(){
             ${visMonths.map(m=>{
               const a = actuals[m];
               const fv = fcForMonth(fc, m);
-              const isPast = m <= today;
-              if(a){
-                const v = a.cost||0;
-                const diff = v - fv;
-                const thresh = fv * 0.05;
-                const color = diff > fv*0.15 ? 'var(--red)' : diff > thresh ? 'var(--yellow)' : diff < -thresh ? 'var(--blue)' : 'var(--green)';
-                return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:${color};background:${m===today?'var(--accent-dim)':''}"
-                  title="${a.notes||''}">${fmt(v)}</td>`;
-              }
-              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:11px;background:${m===today?'var(--accent-dim)':''}">
-                ${isPast?`<span onclick="openLogActualForMonth('${proj.id}','${m}')" style="cursor:pointer;font-size:9px;color:var(--accent);text-decoration:underline">+ Log</span>`:'<span style="color:var(--text3)">—</span>'}</td>`;
+              const v = a ? (a.cost||0) : 0;
+              const diff = v > 0 && fv > 0 ? v - fv : null;
+              const thresh = fv * 0.05;
+              const color = diff === null ? 'var(--text3)'
+                : diff > fv*0.15 ? 'var(--red)'
+                : diff > thresh  ? 'var(--yellow)'
+                : diff < -thresh ? 'var(--blue)'
+                : 'var(--green)';
+              return `<td style="padding:3px 2px;text-align:center;min-width:85px;background:${m===today?'var(--accent-dim)':''}">
+                <input type="number" min="0"
+                  value="${v||''}"
+                  placeholder="—"
+                  class="fc-cell-input"
+                  data-asset="${proj.id}" data-month="${m}"
+                  style="color:${color}"
+                  onchange="updateInlineActual('${proj.id}','${m}',this.value)"
+                  title="Actual cost for ${monthLabel(m)}"/>
+              </td>`;
             }).join('')}
           </tr>
-          <tr style="background:var(--bg3)">
+          <tr style="background:var(--bg3)" id="var-row-${proj.id}">
             <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:10px;color:var(--text3);text-transform:uppercase">Variance</td>
-            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${trend&&trend.varPct>0?'var(--red)':trend&&trend.varPct<0?'var(--green)':'var(--text3)'}">${trend&&trend.varPct!==undefined?(trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%':'—'}</td>
+            <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${trend&&trend.varPct>0?'var(--red)':trend&&trend.varPct<0?'var(--green)':'var(--text3)'}" id="var-total-${proj.id}">${trend&&trend.varPct!==undefined?(trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%':'—'}</td>
             ${visMonths.map(m=>{
               const a = actuals[m];
               const fv = fcForMonth(fc, m);
-              if(!a || !fv) return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">—</td>`;
+              if(!a || !fv) return `<td id="var-${proj.id}-${m}" style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--text3)">—</td>`;
               const diff = (a.cost||0) - fv;
               const color = diff > 0 ? 'var(--red)' : 'var(--green)';
-              return `<td style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:${color}">${diff>=0?'+':''}${fmt(diff)}</td>`;
+              return `<td id="var-${proj.id}-${m}" style="padding:7px 6px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;color:${color}">${diff>=0?'+':''}${fmt(diff)}</td>`;
             }).join('')}
           </tr>
         </tbody>
@@ -2729,8 +2767,115 @@ function updateInlineForecast(assetId, month, value){
   if(v > 0) _finCache.staffingForecasts[assetId].months[month] = v;
   else delete _finCache.staffingForecasts[assetId].months[month];
   scheduleSave();
-  // Refresh burn summary silently
   if(_currentStaffTab === 'burn') renderBurnSummary();
+}
+
+function updateInlineActual(assetId, month, value){
+  if(!_finCache.staffingActuals) _finCache.staffingActuals = {};
+  if(!_finCache.staffingActuals[assetId]) _finCache.staffingActuals[assetId] = {};
+  const v = Number(value||0);
+  if(v > 0) _finCache.staffingActuals[assetId][month] = { cost: v, notes:'' };
+  else delete _finCache.staffingActuals[assetId][month];
+  scheduleSave();
+
+  // Update the input color in place
+  const fc  = (_finCache.staffingForecasts||{})[assetId] || {};
+  const fv  = fcForMonth(fc, month);
+  const inp = document.querySelector(`input[data-asset="${assetId}"][data-month="${month}"]`);
+  if(inp && fv > 0){
+    const diff   = v - fv;
+    const thresh = fv * 0.05;
+    inp.style.color = v === 0 ? 'var(--text3)'
+      : diff > fv*0.15 ? 'var(--red)'
+      : diff > thresh  ? 'var(--yellow)'
+      : diff < -thresh ? 'var(--blue)'
+      : 'var(--green)';
+  }
+
+  // Update just the variance cell for this month
+  const varCell = document.getElementById(`var-${assetId}-${month}`);
+  if(varCell && fv > 0 && v > 0){
+    const diff  = v - fv;
+    const color = diff > 0 ? 'var(--red)' : 'var(--green)';
+    varCell.textContent = (diff >= 0 ? '+' : '') + fmt(diff);
+    varCell.style.color = color;
+  } else if(varCell){
+    varCell.textContent = '—';
+    varCell.style.color = 'var(--text3)';
+  }
+
+  // Update cumulative variance total for this asset
+  const actuals = (_finCache.staffingActuals||{})[assetId] || {};
+  const trend   = staffTrend(assetId);
+  const varTotal = document.getElementById(`var-total-${assetId}`);
+  if(varTotal && trend && trend.varPct !== undefined){
+    varTotal.textContent = (trend.varPct >= 0 ? '+' : '') + Math.round(trend.varPct * 100) + '%';
+    varTotal.style.color = trend.varPct > 0.07 ? 'var(--red)' : trend.varPct > 0.03 ? 'var(--yellow)' : trend.varPct < 0 ? 'var(--green)' : 'var(--text3)';
+  }
+
+  // Update summary cards for this asset
+  const totalActual = Object.values(actuals).reduce((s,a)=>s+(a.cost||0),0);
+  const totalForecast = fcTotal(fc);
+  const summaryActualEl = document.querySelector(`[data-summary-actual="${assetId}"]`);
+  const summaryTrendEl  = document.querySelector(`[data-summary-trend="${assetId}"]`);
+  if(summaryActualEl) summaryActualEl.textContent = fmt(totalActual);
+  if(summaryTrendEl && trend){
+    summaryTrendEl.textContent = trend.label;
+    summaryTrendEl.style.color = trend.color;
+  }
+
+  if(_currentStaffTab === 'burn') renderBurnSummary();
+}
+
+function rebuildForecastRows(){
+  const assetId = document.getElementById('m-forecast-asset-id').value;
+  const start   = document.getElementById('m-forecast-start').value;
+  const end     = document.getElementById('m-forecast-end').value;
+  const container = document.getElementById('m-forecast-rows');
+  if(!container) return;
+  if(!start || !end || start > end){
+    container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text3);font-size:11px">Set valid start and end months to generate rows</div>';
+    const tot = document.getElementById('m-forecast-total');
+    if(tot) tot.textContent = '';
+    return;
+  }
+  const existing = ((_finCache.staffingForecasts||{})[assetId]||{}).months || {};
+  const months = monthRange(start, end);
+  let html = '';
+  months.forEach((m, i) => {
+    const val = existing[m] !== undefined ? existing[m] : '';
+    const bg = i % 2 === 0 ? '' : 'background:var(--bg4)';
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;padding:5px 10px;align-items:center;${bg};border-bottom:1px solid var(--border)">
+      <div style="font-size:11px;font-family:'Syne',sans-serif">${monthLabel(m)}</div>
+      <div style="text-align:right">
+        <input type="number" min="0" step="0.01"
+          value="${val}" placeholder="0" data-month="${m}"
+          onchange="updateForecastRowTotal()"
+          style="width:120px;background:var(--bg2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;text-align:right"/>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html || '<div style="padding:16px;text-align:center;color:var(--text3);font-size:11px">No months in range</div>';
+  updateForecastRowTotal();
+}
+
+function updateForecastRowTotal(){
+  const inputs = document.querySelectorAll('#m-forecast-rows input[data-month]');
+  let total = 0;
+  inputs.forEach(inp => { total += Number(inp.value||0); });
+  const el = document.getElementById('m-forecast-total');
+  const count = inputs.length;
+  if(el) el.textContent = count > 0 ? `Total: $${Math.round(total).toLocaleString()} across ${count} months` : '';
+}
+
+function fillUniformForecast(){
+  const val = prompt('Enter a uniform monthly amount ($) to apply to all months:', '');
+  if(val === null || val === '') return;
+  const amount = Number(val)||0;
+  document.querySelectorAll('#m-forecast-rows input[data-month]').forEach(inp => {
+    inp.value = amount;
+  });
+  updateForecastRowTotal();
 }
 
 function openLogActualForMonth(assetId, month){
@@ -2863,6 +3008,31 @@ function renderBurnSummary(){
 }
 
 
+
+// ── SETTINGS ──
+function openSettingsModal(){
+  document.getElementById('s-api-key').value = localStorage.getItem('jsonbin_api_key')||'';
+  document.getElementById('s-bin-id').value  = localStorage.getItem('fin_bin_id')||'';
+  document.getElementById('s-status').textContent = '';
+  openModal('settings');
+}
+
+function saveSettings(){
+  const key   = document.getElementById('s-api-key').value.trim();
+  const binId = document.getElementById('s-bin-id').value.trim();
+  if(key)   localStorage.setItem('jsonbin_api_key', key);
+  if(binId) { localStorage.setItem('fin_bin_id', binId); _finBinId = binId; }
+  // Update the runtime key reference
+  if(key){
+    // Force re-save with new key on next scheduleSave
+    _finBinId = binId || _finBinId;
+  }
+  document.getElementById('s-status').textContent = '✓ Saved — next sync will use new key';
+  document.getElementById('s-status').style.color = 'var(--green)';
+  setTimeout(()=>closeModal('settings'), 1200);
+  if(_finCache) saveFin(_finCache);
+}
+
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); });
@@ -2933,6 +3103,30 @@ window.addEventListener('beforeunload',e=>{
         <button class="btn" onclick="closeModal('wbs-sync')">Cancel</button>
         <button class="btn btn-success" onclick="applyWbsChanges()" id="btn-apply-wbs">Apply Selected Changes</button>
       </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="modal-settings">
+  <div class="modal" style="width:480px">
+    <h3>⚙ Settings</h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      Paste your JSONBin API key to enable cloud sync. Stored in your browser only.
+    </p>
+    <div class="form-row">
+      <label>JSONBin API Key</label>
+      <input id="s-api-key" type="password" placeholder="$2a$10$..." style="font-family:'DM Mono',monospace"/>
+    </div>
+    <div class="form-row">
+      <label>Dashboard Bin ID <span style="color:var(--text3);font-weight:400">(auto-created on first save)</span></label>
+      <input id="s-bin-id" placeholder="Leave blank to auto-create" style="font-family:'DM Mono',monospace"/>
+    </div>
+    <div id="s-status" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
+    <div class="modal-btns">
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      <button class="btn" onclick="closeModal('settings')">Cancel</button>
     </div>
   </div>
 </div>
