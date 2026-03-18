@@ -188,6 +188,8 @@
   <h1>💰 Project Financial Dashboard</h1>
   <div class="header-right">
     <span class="sync-status" id="sync-status">● Loading...</span>
+    <span id="wbs-sync-status" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text3);display:none"></span>
+    <button class="btn" onclick="openWbsSyncModal()" id="btn-wbs-sync" title="Review and apply WBS budget updates from uploader">📊 WBS Sync</button>
     <button class="btn" onclick="downloadBackup()">💾 Backup</button>
     <button class="btn btn-primary" onclick="openModal('add-project')">+ Project</button>
   </div>
@@ -2051,6 +2053,233 @@ function editWbsBucket(projId, bucketKey){
 }
 
 
+
+// ═══════════════════════════════════════
+// WBS SYNC SYSTEM
+// ═══════════════════════════════════════
+
+const WBS_BUCKET_LABELS = {
+  epc:                 'EPC / Third-Party',
+  owners_construction: "Owner's Construction",
+  modules:             'Modules (PV)',
+  bess_equipment:      'BESS Equipment',
+  substation_hv:       'Substation / HV',
+  development:         'Development & Other',
+};
+
+let _wbsIncoming = null; // parsed data from JSONBin
+let _wbsDiffState = {};  // {assetId_bucketKey: true/false} = accepted/ignored
+
+function setWbsSyncStatus(state, binId){
+  const el = document.getElementById('wbs-sync-status');
+  if(!el) return;
+  if(!binId){ el.style.display='none'; return; }
+  el.style.display='inline';
+  const short = binId.slice(-8);
+  if(state === 'idle')  { el.textContent = `📊 WBS ···${short}`; el.style.color='var(--text3)'; }
+  if(state === 'loaded'){ el.textContent = `📊 WBS ···${short} ✓`; el.style.color='var(--green)'; }
+  if(state === 'error') { el.textContent = `📊 WBS ···${short} ⚠`; el.style.color='var(--red)'; }
+}
+
+function openWbsSyncModal(){
+  // Pre-fill bin ID from localStorage
+  const saved = localStorage.getItem('wbs_bin_id');
+  if(saved) document.getElementById('wbs-bin-id-input').value = saved;
+  openModal('wbs-sync');
+  // Reset state
+  document.getElementById('wbs-sync-loader').style.display = 'none';
+  document.getElementById('wbs-sync-error').style.display  = 'none';
+  document.getElementById('wbs-diff-body').style.display   = 'none';
+  _wbsIncoming = null;
+  _wbsDiffState = {};
+}
+
+async function fetchWbsBin(){
+  const binId  = document.getElementById('wbs-bin-id-input').value.trim();
+  const apiKey = JSONBIN_KEY;
+  if(!binId){ showWbsError('Enter a WBS Bin ID first.'); return; }
+
+  localStorage.setItem('wbs_bin_id', binId);
+  document.getElementById('wbs-sync-loader').style.display = 'block';
+  document.getElementById('wbs-sync-error').style.display  = 'none';
+  document.getElementById('wbs-diff-body').style.display   = 'none';
+
+  try {
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { 'X-Access-Key': apiKey }
+    });
+    if(!r.ok) throw new Error(`JSONBin returned ${r.status} — check Bin ID and API key`);
+    const j = await r.json();
+    const data = j.record;
+    if(!data || !data.assets) throw new Error('Invalid WBS data format in bin');
+
+    _wbsIncoming = data;
+    document.getElementById('wbs-sync-loader').style.display = 'none';
+    renderWbsDiff(data);
+    setWbsSyncStatus('loaded', binId);
+  } catch(e){
+    document.getElementById('wbs-sync-loader').style.display = 'none';
+    showWbsError(e.message);
+    setWbsSyncStatus('error', binId);
+  }
+}
+
+function showWbsError(msg){
+  const el = document.getElementById('wbs-sync-error');
+  el.style.display = 'block';
+  el.textContent = '⚠ ' + msg;
+}
+
+function renderWbsDiff(incoming){
+  const container = document.getElementById('wbs-diff-table');
+  const projects  = _finCache.projects;
+
+  // Build diff — match incoming assets to dashboard assets by id
+  let html = '';
+  let totalChanges = 0;
+  let totalAssets  = 0;
+
+  incoming.assets.forEach(inAsset => {
+    const dashAsset = projects.find(p => p.id === inAsset.id);
+    const buckets   = inAsset.wbsBuckets || {};
+    const dashBuckets = (dashAsset && dashAsset.wbsBuckets) ? dashAsset.wbsBuckets : {};
+
+    const assetTag = inAsset.assetType === 'bess'
+      ? '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--blue-dim);color:var(--blue);margin-left:6px">BESS</span>'
+      : '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--green-dim);color:var(--green);margin-left:6px">PV</span>';
+
+    html += `<div style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg3);border-radius:6px 6px 0 0;border:1px solid var(--border)">
+        <div style="width:8px;height:8px;border-radius:50%;background:${inAsset.assetType==='bess'?'#818cf8':'#6366f1'}"></div>
+        <div style="font-weight:700;font-size:13px">${inAsset.name}</div>${assetTag}
+        ${!dashAsset ? '<span style="font-size:9px;color:var(--yellow);margin-left:auto">⚠ Asset not found in dashboard</span>' : ''}
+      </div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;overflow:hidden">
+        <thead><tr style="background:var(--bg3)">
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:left;font-weight:600">Bucket</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Current (Dashboard)</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Incoming (WBS)</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:right;font-weight:600">Change</th>
+          <th style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3);padding:6px 10px;text-align:center;font-weight:600">Action</th>
+        </tr></thead>
+        <tbody>`;
+
+    Object.entries(WBS_BUCKET_LABELS).forEach(([key, label]) => {
+      const inBucket   = buckets[key]      || {};
+      const dashBucket = dashBuckets[key]  || {};
+      const inVal  = Number(inBucket.approved  || 0);
+      const curVal = Number(dashBucket.approved || 0);
+      const diff   = inVal - curVal;
+      const diffFmt = diff === 0 ? '—'
+        : (diff > 0 ? '+' : '') + '$' + Math.round(Math.abs(diff)).toLocaleString() + (diff < 0 ? ' ↓' : ' ↑');
+      const diffColor = diff > 0 ? 'var(--yellow)' : diff < 0 ? 'var(--blue)' : 'var(--text3)';
+      const stateKey = `${inAsset.id}_${key}`;
+      const hasChange = diff !== 0;
+      if(hasChange) totalChanges++;
+
+      // Default: accept if there's a change
+      if(_wbsDiffState[stateKey] === undefined && hasChange) _wbsDiffState[stateKey] = true;
+      if(!hasChange) _wbsDiffState[stateKey] = false;
+
+      const isAccepted = _wbsDiffState[stateKey] === true;
+      const rowBg = !hasChange ? '' : isAccepted ? 'background:rgba(34,197,94,.04)' : 'background:rgba(239,68,68,.04)';
+
+      html += `<tr style="${rowBg};border-bottom:1px solid var(--border)">
+        <td style="padding:7px 10px;font-family:'Syne',sans-serif;font-weight:600;font-size:11px">${label}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)">${curVal > 0 ? '$'+Math.round(curVal).toLocaleString() : '—'}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;font-weight:600">${inVal > 0 ? '$'+Math.round(inVal).toLocaleString() : '—'}</td>
+        <td style="padding:7px 10px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:${diffColor}">${diffFmt}</td>
+        <td style="padding:7px 10px;text-align:center">
+          ${hasChange
+            ? `<div style="display:flex;gap:6px;justify-content:center">
+                <button onclick="setWbsDiffState('${stateKey}', true)"
+                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${isAccepted?'var(--green)':'var(--border2)'};background:${isAccepted?'var(--green-dim)':'var(--bg3)'};color:${isAccepted?'var(--green)':'var(--text3)'};cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">
+                  ✓ Accept
+                </button>
+                <button onclick="setWbsDiffState('${stateKey}', false)"
+                  style="font-size:9px;padding:2px 8px;border-radius:3px;border:1px solid ${!isAccepted&&hasChange?'var(--red)':'var(--border2)'};background:${!isAccepted&&hasChange?'var(--red-dim)':'var(--bg3)'};color:${!isAccepted&&hasChange?'var(--red)':'var(--text3)'};cursor:pointer;font-family:'Syne',sans-serif;font-weight:600">
+                  ✕ Ignore
+                </button>
+              </div>`
+            : '<span style="font-size:9px;color:var(--text3)">No change</span>'
+          }
+        </td>
+      </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    totalAssets++;
+  });
+
+  if(totalAssets === 0){
+    html = '<div style="text-align:center;padding:30px;color:var(--text3);font-size:12px">No assets found in WBS data.</div>';
+  }
+
+  container.innerHTML = html;
+  document.getElementById('wbs-diff-body').style.display = 'block';
+  document.getElementById('wbs-diff-meta').textContent =
+    `${totalAssets} asset${totalAssets!==1?'s':''} · ${totalChanges} change${totalChanges!==1?'s':''} detected · extracted ${new Date(incoming.lastUpdated||incoming.extractedAt||'').toLocaleString()}`;
+  updateWbsApplySummary();
+}
+
+function setWbsDiffState(stateKey, accepted){
+  _wbsDiffState[stateKey] = accepted;
+  // Re-render diff with updated state
+  if(_wbsIncoming) renderWbsDiff(_wbsIncoming);
+}
+
+function wbsSelectAll(accept){
+  Object.keys(_wbsDiffState).forEach(k => {
+    // Only toggle keys that actually have changes (value wasn't forced false due to no-change)
+    if(_wbsDiffState[k] !== undefined) _wbsDiffState[k] = accept;
+  });
+  if(_wbsIncoming) renderWbsDiff(_wbsIncoming);
+}
+
+function updateWbsApplySummary(){
+  const accepted = Object.entries(_wbsDiffState).filter(([,v]) => v === true).length;
+  const total    = Object.entries(_wbsDiffState).filter(([,v]) => v !== undefined).length;
+  document.getElementById('wbs-apply-summary').textContent =
+    `${accepted} of ${total} change${total!==1?'s':''} selected to apply`;
+}
+
+function applyWbsChanges(){
+  if(!_wbsIncoming || !_wbsIncoming.assets) return;
+  let applied = 0;
+
+  _wbsIncoming.assets.forEach(inAsset => {
+    const dashAsset = _finCache.projects.find(p => p.id === inAsset.id);
+    if(!dashAsset) return;
+    if(!dashAsset.wbsBuckets) dashAsset.wbsBuckets = {};
+
+    const inBuckets = inAsset.wbsBuckets || {};
+    Object.keys(WBS_BUCKET_LABELS).forEach(key => {
+      const stateKey = `${inAsset.id}_${key}`;
+      if(_wbsDiffState[stateKey] !== true) return; // not accepted
+
+      if(!dashAsset.wbsBuckets[key]) dashAsset.wbsBuckets[key] = {approved:0,committed:0,pending_co:0,jtd:0,fac:0};
+
+      // Only update approved budget — preserve manual committed/JTD/FAC
+      const inBucket = inBuckets[key] || {};
+      dashAsset.wbsBuckets[key].approved = Number(inBucket.approved || 0);
+      applied++;
+    });
+  });
+
+  scheduleSave();
+  renderPortfolio();
+  closeModal('wbs-sync');
+
+  // Show confirmation
+  const statusEl = document.getElementById('wbs-sync-status');
+  if(statusEl){
+    statusEl.textContent = `📊 WBS synced · ${applied} bucket${applied!==1?'s':''} updated`;
+    statusEl.style.color = 'var(--green)';
+    setTimeout(() => setWbsSyncStatus('loaded', localStorage.getItem('wbs_bin_id')), 4000);
+  }
+}
+
+
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(el=>{
   el.addEventListener('click',e=>{ if(e.target===el) el.classList.remove('open'); });
@@ -2062,11 +2291,68 @@ document.querySelectorAll('.modal-overlay').forEach(el=>{
 loadFin().then(()=>{
   renderPortfolio();
   renderStaffing();
+  // Restore WBS bin ID from localStorage
+  const savedWbsBinId = localStorage.getItem('wbs_bin_id');
+  if(savedWbsBinId){
+    const el = document.getElementById('wbs-bin-id-input');
+    if(el) el.value = savedWbsBinId;
+    setWbsSyncStatus('idle', savedWbsBinId);
+  }
 });
 
 window.addEventListener('beforeunload',e=>{
   if(_isDirty||_saveTimer){ e.preventDefault(); e.returnValue=''; }
 });
 </script>
+
+<!-- ══════════════════════════════════════════
+     WBS SYNC MODAL
+════════════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-wbs-sync" style="align-items:flex-start;padding-top:40px">
+  <div class="modal" style="width:800px;max-width:96vw;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h3 style="font-size:14px">📊 WBS Budget Sync</h3>
+      <button class="btn" onclick="closeModal('wbs-sync')" style="padding:3px 8px;font-size:10px">✕ Close</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      Review incoming WBS data from the uploader. Accept or ignore changes per bucket before applying.
+    </p>
+
+    <!-- Bin ID config -->
+    <div style="background:var(--bg3);border-radius:6px;padding:10px 12px;margin-bottom:14px;display:flex;gap:10px;align-items:center">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0">WBS Bin ID</div>
+      <input id="wbs-bin-id-input" placeholder="69baf9e9aa77b81da9f84d4a"
+        style="flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:5px 8px"
+        oninput="localStorage.setItem('wbs_bin_id', this.value)"/>
+      <button class="btn btn-primary" onclick="fetchWbsBin()" style="flex-shrink:0">Load Latest</button>
+    </div>
+
+    <!-- Status / loading -->
+    <div id="wbs-sync-loader" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:12px">
+      ↻ Loading WBS data...
+    </div>
+    <div id="wbs-sync-error" style="display:none;background:var(--red-dim);border:1px solid var(--red);border-radius:6px;padding:10px;font-size:11px;color:var(--red);margin-bottom:12px"></div>
+
+    <!-- Diff table -->
+    <div id="wbs-diff-body" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--text3)">
+          <span id="wbs-diff-meta"></span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" onclick="wbsSelectAll(true)" style="font-size:10px">✓ Accept All</button>
+          <button class="btn" onclick="wbsSelectAll(false)" style="font-size:10px">✕ Ignore All</button>
+        </div>
+      </div>
+      <div id="wbs-diff-table"></div>
+      <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border);padding-top:12px">
+        <div style="flex:1;font-size:11px;color:var(--text3)" id="wbs-apply-summary"></div>
+        <button class="btn" onclick="closeModal('wbs-sync')">Cancel</button>
+        <button class="btn btn-success" onclick="applyWbsChanges()" id="btn-apply-wbs">Apply Selected Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
