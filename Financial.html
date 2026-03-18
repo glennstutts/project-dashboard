@@ -208,20 +208,26 @@
   <!-- Summary cards -->
   <div class="summary-grid" id="summary-cards"></div>
 
+  <!-- Flag Panel -->
+  <div id="flag-panel" style="margin-bottom:14px;display:none">
+    <div class="section-title">⚠ Flags &amp; Warnings</div>
+    <div id="flag-panel-content" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px"></div>
+  </div>
+
   <!-- Project table -->
   <div class="section-title">All Projects</div>
   <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
     <table class="project-table" id="portfolio-table">
       <thead>
         <tr>
-          <th>Project</th>
+          <th>Project / Asset</th>
           <th>EPC Contract</th>
           <th>Approved COs</th>
           <th>Total Contract</th>
+          <th>WBS Budget</th>
           <th>Invoiced</th>
           <th>Paid</th>
-          <th>Remaining</th>
-          <th>Labor MTD</th>
+          <th>FAC vs Budget</th>
           <th>% Complete</th>
           <th>Health</th>
         </tr>
@@ -281,6 +287,7 @@
 
   <div class="sub-tabs">
     <div class="sub-tab active" onclick="showSubTab('overview')">Overview</div>
+    <div class="sub-tab" onclick="showSubTab('wbsbudget')">WBS Budget</div>
     <div class="sub-tab" onclick="showSubTab('loan')">Loan &amp; Draws</div>
     <div class="sub-tab" onclick="showSubTab('payapps')">Pay Apps</div>
     <div class="sub-tab" onclick="showSubTab('changeorders')">Change Orders</div>
@@ -293,6 +300,34 @@
   <!-- Overview -->
   <div id="sub-overview">
     <div class="detail-grid" id="proj-overview-grid" style="grid-template-columns:1fr 1fr 1fr"></div>
+  </div>
+
+  <!-- WBS Budget -->
+  <div id="sub-wbsbudget" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin-bottom:0">WBS Budget — Cost Buckets</div>
+      <div id="wbs-flag-badge"></div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:14px">
+      <table class="co-table" id="wbs-table" style="width:100%">
+        <thead><tr>
+          <th style="text-align:left">Budget Bucket</th>
+          <th style="text-align:right">Approved Budget</th>
+          <th style="text-align:right">Committed</th>
+          <th style="text-align:right">Pending CO</th>
+          <th style="text-align:right">JTD Actual</th>
+          <th style="text-align:right">Forecast at Complete</th>
+          <th style="text-align:right">Variance $</th>
+          <th style="text-align:right">Variance %</th>
+          <th style="text-align:right">Flag</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="wbs-tbody"></tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:8px">
+      🟢 &lt;3% variance &nbsp;|&nbsp; 🟡 3–7% or pending CO exposure &nbsp;|&nbsp; 🔴 &gt;7% or committed exceeds budget
+    </div>
   </div>
 
   <!-- Loan & Draws -->
@@ -686,15 +721,38 @@ function fmt(n, decimals=0){
 
 function pct(a, b){ if(!b) return 0; return Math.round(a/b*100); }
 
+function emptyWbs(){
+  return {
+    epc:                 {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+    owners_construction: {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+    modules:             {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+    bess_equipment:      {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+    substation_hv:       {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+    development:         {approved:0, committed:0, pending_co:0, jtd:0, fac:0},
+  };
+}
+
+function makeAsset(id, name, color, siteGroup, assetType, status){
+  return {
+    id, name, color, siteGroup, assetType, status,
+    epcContract:0, ownerBudget:0,
+    wbsBuckets: emptyWbs(),
+    payApps:[], changeOrders:[], ownerCosts:[], equipment:[],
+    draws:[], contingencyBudget:0, contingencyUsed:[],
+    loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}
+  };
+}
+
 function defaultData(){
   return {
     projects: [
-      {id:'eagle-springs', name:'Eagle Springs', color:'#6366f1', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
-      {id:'lupinus-2',     name:'Lupinus 2',     color:'#22c55e', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
-      {id:'lupinus',       name:'Lupinus',       color:'#f97316', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
-      {id:'staccato',      name:'Staccato',      color:'#eab308', epcContract:0, ownerBudget:0, status:'active', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
-      {id:'gaia',          name:'Gaia',          color:'#3b82f6', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
-      {id:'midpoint',      name:'Midpoint',      color:'#ec4899', epcContract:0, ownerBudget:0, status:'closeout', payApps:[], changeOrders:[], ownerCosts:[], equipment:[], draws:[], contingencyBudget:0, contingencyUsed:[], loan:{lender:'',amount:0,rate:0,maturity:'',holdback:0}},
+      makeAsset('es-solar',    'ES Solar',    '#6366f1', 'eagle-springs', 'solar', 'active'),
+      makeAsset('es-bess',     'ES BESS',     '#818cf8', 'eagle-springs', 'bess',  'active'),
+      makeAsset('lup-solar',   'LUP Solar',   '#22c55e', 'lupinus',       'solar', 'active'),
+      makeAsset('lup-bess',    'LUP BESS',    '#4ade80', 'lupinus',       'bess',  'active'),
+      makeAsset('lup2-solar',  'LUP2 Solar',  '#f97316', 'lupinus-2',     'solar', 'active'),
+      makeAsset('lup2-bess',   'LUP2 BESS',   '#fb923c', 'lupinus-2',     'bess',  'active'),
+      makeAsset('staccato',    'Staccato',    '#eab308', 'staccato',      'solar', 'active'),
     ],
     staff: [],
     allocations: {} // {staffId: {projectId: pct}}
@@ -805,6 +863,7 @@ function showSubTab(t){
   document.querySelectorAll('.sub-tab').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.sub-tab').forEach(el=>{
     if(el.textContent.toLowerCase()===t.toLowerCase()||
+       (t==='wbsbudget'&&el.textContent.toLowerCase().includes('wbs'))||
        (t==='ownercosts'&&el.textContent.toLowerCase().includes('owner'))||
        (t==='changeorders'&&el.textContent.toLowerCase().includes('change'))||
        (t==='payapps'&&el.textContent.toLowerCase().includes('pay')))
@@ -855,11 +914,41 @@ function projectTotals(p){
   return {approvedCOs,totalContract,invoiced,paid,remaining,completePct,ocActual,laborMTD,retainageHeld,equipPO,equipInvoiced,equipPaid};
 }
 
+function wbsTotals(p){
+  const buckets = p.wbsBuckets || {};
+  let approved=0, committed=0, pending_co=0, jtd=0, fac=0;
+  Object.values(buckets).forEach(b=>{
+    approved   += Number(b.approved||0);
+    committed  += Number(b.committed||0);
+    pending_co += Number(b.pending_co||0);
+    jtd        += Number(b.jtd||0);
+    fac        += Number(b.fac||0);
+  });
+  // If no FAC entered, fall back to committed as proxy
+  if(fac===0 && committed>0) fac = committed;
+  const variance = fac - approved;
+  const variancePct = approved > 0 ? variance / approved : 0;
+  return {approved, committed, pending_co, jtd, fac, variance, variancePct};
+}
+
 function healthColor(p, t){
-  if(!t.totalContract) return 'health-yellow';
-  if(t.completePct>=100) return 'health-green';
-  if(t.invoiced>t.totalContract) return 'health-red';
+  const w = wbsTotals(p);
+  // If no WBS data entered yet, fall back to EPC-based logic
+  if(w.approved === 0){
+    if(!t.totalContract) return 'health-yellow';
+    if(t.invoiced > t.totalContract) return 'health-red';
+    if(t.totalContract > 0) return 'health-green';
+    return 'health-yellow';
+  }
+  if(w.variancePct > 0.07 || w.committed > w.approved) return 'health-red';
+  if(w.variancePct > 0.03 || w.pending_co > 0) return 'health-yellow';
   return 'health-green';
+}
+
+function healthLabel(hc){
+  if(hc==='health-red') return 'At Risk';
+  if(hc==='health-yellow') return 'Watch';
+  return 'On Track';
 }
 
 function renderPortfolio(){
@@ -871,55 +960,106 @@ function renderPortfolio(){
   });
 
   // Summary cards
+  // WBS portfolio roll-up
+  let wbsPortfolioApproved=0, wbsPortfolioFac=0, wbsPortfolioCommitted=0, wbsPendingCO=0;
+  d.projects.forEach(p=>{ const w=wbsTotals(p); wbsPortfolioApproved+=w.approved; wbsPortfolioFac+=w.fac; wbsPortfolioCommitted+=w.committed; wbsPendingCO+=w.pending_co; });
+  const portfolioVariancePct = wbsPortfolioApproved>0 ? (wbsPortfolioFac-wbsPortfolioApproved)/wbsPortfolioApproved : 0;
+  const portfolioVarColor = portfolioVariancePct>0.07?'var(--red)':portfolioVariancePct>0.03?'var(--yellow)':'var(--green)';
+  const flaggedCount = d.projects.filter(p=>{ const hc=healthColor(p,projectTotals(p)); return hc!=='health-green'; }).length;
+
   document.getElementById('summary-cards').innerHTML=`
     <div class="summary-card">
-      <div class="label">Total EPC Value</div>
-      <div class="value" style="font-size:18px">${fmt(totalEPC)}</div>
-      <div class="sub">${d.projects.length} active projects</div>
+      <div class="label">Portfolio WBS Budget</div>
+      <div class="value" style="font-size:18px">${wbsPortfolioApproved>0?fmt(wbsPortfolioApproved):fmt(totalEPC)}</div>
+      <div class="sub">${d.projects.length} asset${d.projects.length!==1?'s':''} · ${flaggedCount} flag${flaggedCount!==1?'s':''}</div>
     </div>
     <div class="summary-card">
-      <div class="label">Total Invoiced</div>
-      <div class="value" style="font-size:18px;color:var(--yellow)">${fmt(totalInvoiced)}</div>
-      <div class="sub">${totalEPC>0?pct(totalInvoiced,totalEPC):0}% of total contract</div>
+      <div class="label">Total Committed</div>
+      <div class="value" style="font-size:18px;color:var(--yellow)">${wbsPortfolioCommitted>0?fmt(wbsPortfolioCommitted):fmt(totalInvoiced)}</div>
+      <div class="sub">${wbsPendingCO>0?fmt(wbsPendingCO)+' pending CO exposure':totalEPC>0?pct(totalInvoiced,totalEPC)+'% invoiced':'No data yet'}</div>
     </div>
     <div class="summary-card">
-      <div class="label">Total Paid</div>
-      <div class="value" style="font-size:18px;color:var(--green)">${fmt(totalPaid)}</div>
-      <div class="sub">${fmt(totalInvoiced-totalPaid)} outstanding</div>
+      <div class="label">Portfolio FAC vs Budget</div>
+      <div class="value" style="font-size:18px;color:${portfolioVarColor}">${wbsPortfolioFac>0?fmt(wbsPortfolioFac):fmt(totalPaid)}</div>
+      <div class="sub" style="color:${portfolioVarColor}">${wbsPortfolioApproved>0?(portfolioVariancePct>=0?'+':'')+Math.round(portfolioVariancePct*100)+'% variance':fmt(totalInvoiced-totalPaid)+' outstanding'}</div>
     </div>
     <div class="summary-card">
       <div class="label">Labor Cost MTD</div>
       <div class="value" style="font-size:18px;color:var(--accent)">${fmt(totalLabor)}</div>
-      <div class="sub">${d.staff?.length||0} site reps allocated</div>
+      <div class="sub">${d.staff?.length||0} site rep${(d.staff?.length||0)!==1?'s':''} allocated</div>
     </div>`;
 
-  // Project table
+  // Project table — grouped by site
   let tbody='';
-  d.projects.forEach(p=>{
+  const siteOrder = ['eagle-springs', 'lupinus', 'lupinus-2', 'staccato'];
+  const siteLabels = {'eagle-springs':'Eagle Springs', 'lupinus':'Lupinus', 'lupinus-2':'Lupinus 2', 'staccato':'Staccato'};
+  const siteColors = {'eagle-springs':'#6366f1', 'lupinus':'#22c55e', 'lupinus-2':'#f97316', 'staccato':'#eab308'};
+
+  siteOrder.forEach(siteId=>{
+    const siteAssets = d.projects.filter(p=>p.siteGroup===siteId);
+    if(siteAssets.length===0) return;
+    // Site header row
+    tbody+=`<tr style="background:var(--bg3)">
+      <td colspan="10" style="font-size:10px;font-weight:700;color:${siteColors[siteId]||'var(--text3)'};letter-spacing:.6px;text-transform:uppercase;padding:6px 10px">
+        ◆ ${siteLabels[siteId]||siteId}
+      </td>
+    </tr>`;
+    siteAssets.forEach(p=>{
+      const t=projectTotals(p);
+      const w=wbsTotals(p);
+      const hc=healthColor(p,t);
+      const barColor=t.completePct>90?'#22c55e':t.completePct>60?'#eab308':'#3b82f6';
+      const wbsApproved = w.approved > 0 ? fmt(w.approved) : '—';
+      const facVsBudget = w.approved > 0
+        ? `<span style="color:${w.variancePct>0.07?'var(--red)':w.variancePct>0.03?'var(--yellow)':'var(--green)'};font-size:11px">${w.fac>0?fmt(w.fac):'—'}</span><span style="font-size:9px;color:var(--text3)"> / ${fmt(w.approved)}</span>`
+        : '—';
+      const assetTag = p.assetType==='bess'
+        ? `<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--blue-dim);color:var(--blue);margin-left:4px">BESS</span>`
+        : `<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:var(--green-dim);color:var(--green);margin-left:4px">PV</span>`;
+      tbody+=`<tr onclick="openProjectDetail('${p.id}')" style="cursor:pointer">
+        <td><div class="project-name-cell" style="padding-left:8px">
+          <div class="project-dot" style="background:${p.color}"></div>
+          ${p.name}${assetTag}
+          <span style="font-size:9px;color:var(--text3);font-weight:400">${p.status}</span>
+        </div></td>
+        <td>${fmt(p.epcContract)}</td>
+        <td style="color:${t.approvedCOs>0?'var(--orange)':'var(--text3)'}">${t.approvedCOs>0?'+'+fmt(t.approvedCOs):'—'}</td>
+        <td style="font-weight:600">${fmt(t.totalContract)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${wbsApproved}</td>
+        <td>${fmt(t.invoiced)}</td>
+        <td style="color:var(--green)">${fmt(t.paid)}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${facVsBudget}</td>
+        <td>
+          ${t.completePct}%
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(t.completePct,100)}%;background:${barColor}"></div></div>
+        </td>
+        <td><span class="health-badge ${hc}">${healthLabel(hc)}</span></td>
+      </tr>`;
+    });
+  });
+  // Any ungrouped projects
+  const ungrouped = d.projects.filter(p=>!p.siteGroup || !siteOrder.includes(p.siteGroup));
+  ungrouped.forEach(p=>{
     const t=projectTotals(p);
+    const w=wbsTotals(p);
     const hc=healthColor(p,t);
     const barColor=t.completePct>90?'#22c55e':t.completePct>60?'#eab308':'#3b82f6';
     tbody+=`<tr onclick="openProjectDetail('${p.id}')" style="cursor:pointer">
-      <td><div class="project-name-cell">
-        <div class="project-dot" style="background:${p.color}"></div>
-        ${p.name}
-        <span style="font-size:9px;color:var(--text3);font-weight:400">${p.status}</span>
-      </div></td>
+      <td><div class="project-name-cell"><div class="project-dot" style="background:${p.color}"></div>${p.name}<span style="font-size:9px;color:var(--text3);font-weight:400">${p.status}</span></div></td>
       <td>${fmt(p.epcContract)}</td>
       <td style="color:${t.approvedCOs>0?'var(--orange)':'var(--text3)'}">${t.approvedCOs>0?'+'+fmt(t.approvedCOs):'—'}</td>
       <td style="font-weight:600">${fmt(t.totalContract)}</td>
-      <td>${fmt(t.invoiced)}</td>
+      <td>—</td><td>${fmt(t.invoiced)}</td>
       <td style="color:var(--green)">${fmt(t.paid)}</td>
-      <td style="color:var(--text3)">${fmt(t.remaining)}</td>
-      <td style="color:var(--accent)">${fmt(t.laborMTD)}</td>
-      <td>
-        ${t.completePct}%
-        <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(t.completePct,100)}%;background:${barColor}"></div></div>
-      </td>
-      <td><span class="health-badge ${hc}">${hc==='health-green'?'On Track':hc==='health-yellow'?'Needs Setup':'At Risk'}</span></td>
+      <td>—</td>
+      <td>${t.completePct}%<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(t.completePct,100)}%;background:${barColor}"></div></div></td>
+      <td><span class="health-badge ${hc}">${healthLabel(hc)}</span></td>
     </tr>`;
   });
   document.getElementById('portfolio-tbody').innerHTML=tbody||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">No projects yet — click + Project to add one</td></tr>';
+
+  // Render flag panel
+  renderFlagPanel(d.projects);
 
   // Owner cost summary
   let ocHtml='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
@@ -1042,6 +1182,7 @@ function renderProjectDetail(projId){
   document.getElementById('proj-detail-meta').textContent=`${proj.status} · ${t.completePct}% invoiced`;
 
   if(_currentSubTab==='overview') renderOverview(proj, t);
+  else if(_currentSubTab==='wbsbudget') renderWbsBudget(proj);
   else if(_currentSubTab==='payapps') renderPayApps(proj);
   else if(_currentSubTab==='changeorders') renderChangeOrders(proj);
   else if(_currentSubTab==='loan') renderLoan(proj);
@@ -1763,6 +1904,152 @@ function downloadBackup(){
   a.href=url; a.download='financial-backup-'+new Date().toISOString().slice(0,10)+'.json';
   a.click(); URL.revokeObjectURL(url);
 }
+
+
+// ═══════════════════════════════════════
+// FLAG PANEL
+// ═══════════════════════════════════════
+function renderFlagPanel(projects){
+  const flagged = [];
+  projects.forEach(p=>{
+    const t = projectTotals(p);
+    const w = wbsTotals(p);
+    const hc = healthColor(p, t);
+    if(hc === 'health-red' || hc === 'health-yellow'){
+      const reasons = [];
+      if(w.approved > 0){
+        if(w.variancePct > 0.07) reasons.push(`FAC exceeds budget by ${Math.round(w.variancePct*100)}%`);
+        else if(w.variancePct > 0.03) reasons.push(`FAC trending over budget (${Math.round(w.variancePct*100)}%)`);
+        if(w.committed > w.approved) reasons.push(`Committed (${fmt(w.committed)}) exceeds approved budget`);
+        if(w.pending_co > 0) reasons.push(`${fmt(w.pending_co)} in pending COs`);
+      } else {
+        reasons.push('WBS budget not configured');
+      }
+      flagged.push({p, hc, reasons, w});
+    }
+  });
+
+  const panel = document.getElementById('flag-panel');
+  const content = document.getElementById('flag-panel-content');
+  if(flagged.length === 0){ panel.style.display='none'; return; }
+  panel.style.display='block';
+
+  content.innerHTML = flagged.map(({p, hc, reasons, w})=>`
+    <div style="background:var(--bg2);border:1px solid ${hc==='health-red'?'var(--red)':'var(--yellow)'};border-radius:8px;padding:12px;cursor:pointer" onclick="openProjectDetail('${p.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${p.color}"></div>
+        <div style="font-weight:700;font-size:12px">${p.name}</div>
+        <span class="health-badge ${hc}" style="margin-left:auto">${healthLabel(hc)}</span>
+      </div>
+      ${reasons.map(r=>`<div style="font-size:11px;color:var(--text2);padding:2px 0;display:flex;align-items:center;gap:6px">
+        <span style="color:${hc==='health-red'?'var(--red)':'var(--yellow)'}">${hc==='health-red'?'⬤':'◐'}</span>${r}
+      </div>`).join('')}
+      ${w.approved>0?`<div style="margin-top:8px;font-size:10px;color:var(--text3)">Budget: ${fmt(w.approved)} · FAC: ${fmt(w.fac)}</div>`:''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// WBS BUDGET TAB
+// ═══════════════════════════════════════
+const WBS_BUCKET_LABELS = {
+  epc:                 'EPC / Third-Party',
+  owners_construction: "Owner's Construction",
+  modules:             'Modules (PV)',
+  bess_equipment:      'BESS Equipment',
+  substation_hv:       'Substation / HV',
+  development:         'Development & Other',
+};
+
+function renderWbsBudget(proj){
+  if(!proj.wbsBuckets) proj.wbsBuckets = emptyWbs();
+  const buckets = proj.wbsBuckets;
+  const w = wbsTotals(proj);
+  const hc = w.approved > 0
+    ? (w.variancePct > 0.07 || w.committed > w.approved ? 'health-red'
+      : w.variancePct > 0.03 || w.pending_co > 0 ? 'health-yellow'
+      : 'health-green')
+    : 'health-yellow';
+
+  document.getElementById('wbs-flag-badge').innerHTML =
+    `<span class="health-badge ${hc}">${healthLabel(hc)}</span>`;
+
+  let rows = '';
+  Object.entries(WBS_BUCKET_LABELS).forEach(([key, label])=>{
+    const b = buckets[key] || {approved:0,committed:0,pending_co:0,jtd:0,fac:0};
+    const approved   = Number(b.approved||0);
+    const committed  = Number(b.committed||0);
+    const pending_co = Number(b.pending_co||0);
+    const jtd        = Number(b.jtd||0);
+    const fac        = Number(b.fac||0) || committed;
+    const variance   = fac - approved;
+    const varPct     = approved > 0 ? variance / approved : 0;
+    const flagColor  = varPct > 0.07 || committed > approved ? 'var(--red)'
+                     : varPct > 0.03 || pending_co > 0 ? 'var(--yellow)'
+                     : approved > 0 ? 'var(--green)' : 'var(--text3)';
+    const flag       = varPct > 0.07 || committed > approved ? '🔴'
+                     : varPct > 0.03 || pending_co > 0 ? '🟡'
+                     : approved > 0 ? '🟢' : '—';
+    rows += `<tr>
+      <td style="font-family:'Syne',sans-serif;font-weight:600;text-align:left">${label}</td>
+      <td style="text-align:right">${approved>0?fmt(approved):'—'}</td>
+      <td style="text-align:right;color:var(--text2)">${committed>0?fmt(committed):'—'}</td>
+      <td style="text-align:right;color:var(--yellow)">${pending_co>0?fmt(pending_co):'—'}</td>
+      <td style="text-align:right;color:var(--blue)">${jtd>0?fmt(jtd):'—'}</td>
+      <td style="text-align:right;font-weight:600">${fac>0?fmt(fac):'—'}</td>
+      <td style="text-align:right;color:${variance>0?'var(--red)':variance<0?'var(--green)':'var(--text3)'}">${fac>0&&approved>0?(variance>=0?'+':'')+fmt(variance):'—'}</td>
+      <td style="text-align:right;color:${flagColor};font-family:'DM Mono',monospace">${approved>0?(varPct>=0?'+':'')+Math.round(varPct*100)+'%':'—'}</td>
+      <td style="text-align:center">${flag}</td>
+      <td style="text-align:right"><span onclick="editWbsBucket('${proj.id}','${key}')" style="cursor:pointer;font-size:9px;color:var(--accent)">Edit</span></td>
+    </tr>`;
+  });
+
+  // Totals row
+  const totalVariance = w.fac - w.approved;
+  const totalVarPct   = w.approved > 0 ? totalVariance / w.approved : 0;
+  const totalColor    = totalVarPct > 0.07 ? 'var(--red)' : totalVarPct > 0.03 ? 'var(--yellow)' : 'var(--green)';
+  rows += `<tr style="background:var(--bg3);font-weight:700;border-top:2px solid var(--border2)">
+    <td style="font-family:'Syne',sans-serif;text-align:left;text-transform:uppercase;font-size:10px;letter-spacing:.5px;color:var(--text3)">TOTAL</td>
+    <td style="text-align:right">${w.approved>0?fmt(w.approved):'—'}</td>
+    <td style="text-align:right;color:var(--text2)">${w.committed>0?fmt(w.committed):'—'}</td>
+    <td style="text-align:right;color:var(--yellow)">${w.pending_co>0?fmt(w.pending_co):'—'}</td>
+    <td style="text-align:right;color:var(--blue)">${w.jtd>0?fmt(w.jtd):'—'}</td>
+    <td style="text-align:right">${w.fac>0?fmt(w.fac):'—'}</td>
+    <td style="text-align:right;color:${totalVariance>0?'var(--red)':totalVariance<0?'var(--green)':'var(--text3)'}">${w.fac>0&&w.approved>0?(totalVariance>=0?'+':'')+fmt(totalVariance):'—'}</td>
+    <td style="text-align:right;color:${totalColor};font-family:'DM Mono',monospace">${w.approved>0?(totalVarPct>=0?'+':'')+Math.round(totalVarPct*100)+'%':'—'}</td>
+    <td></td><td></td>
+  </tr>`;
+
+  document.getElementById('wbs-tbody').innerHTML = rows;
+}
+
+function editWbsBucket(projId, bucketKey){
+  const proj = _finCache.projects.find(p=>p.id===projId);
+  if(!proj) return;
+  if(!proj.wbsBuckets) proj.wbsBuckets = emptyWbs();
+  const b = proj.wbsBuckets[bucketKey] || {approved:0,committed:0,pending_co:0,jtd:0,fac:0};
+  const label = WBS_BUCKET_LABELS[bucketKey] || bucketKey;
+
+  // Simple prompt-based editing for each field
+  const fields = [
+    {key:'approved',   label:'Approved Budget ($)'},
+    {key:'committed',  label:'Current Commitments ($)'},
+    {key:'pending_co', label:'Pending CO Exposure ($)'},
+    {key:'jtd',        label:'JTD Actual (Job-to-Date) ($)'},
+    {key:'fac',        label:'Forecast at Complete ($) — leave 0 to use committed'},
+  ];
+
+  for(const f of fields){
+    const val = prompt(`${label}\n${f.label}:`, b[f.key]||0);
+    if(val === null) return; // cancelled
+    b[f.key] = Number(val) || 0;
+  }
+
+  proj.wbsBuckets[bucketKey] = b;
+  scheduleSave();
+  renderProjectDetail(projId);
+  renderPortfolio();
+}
+
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(el=>{
