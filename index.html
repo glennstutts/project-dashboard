@@ -1,4 +1,4 @@
-<!DOCTYPE html><!-- Dashboard v2026-03-16 18:32 -->
+<!DOCTYPE html><!-- v2.1.1 --><!-- Dashboard v2026-03-16 18:32 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
@@ -73,6 +73,7 @@
   .h-task.checked .priority-dot { opacity: 0.3; }
   .h-task.checked .flag-icon { opacity: 0.3; }
   .h-subtask.checked .subtask-text { text-decoration: line-through; opacity: 0.45; }
+  .h-child.child-checked .child-text { text-decoration: line-through; opacity: 0.45; }
   .send-complete-btn { font-size: 9px; color: #27ae60; cursor: pointer; padding: 1px 5px; border: 1px solid #27ae6044; border-radius: 3px; white-space: nowrap; }
   .send-complete-btn:hover { background: #27ae6022; }
   .uncheck-btn { font-size: 9px; color: var(--text3); cursor: pointer; padding: 1px 4px; }
@@ -97,9 +98,10 @@
   /* Subgroup priority colors */
   .h-sub.sub-checked > .h-sub-label { opacity: 0.6; }
   .h-sub.sub-checked > .h-sub-body { opacity: 0.5; pointer-events: none; }
-  .h-sub-label.sub-priority-high { background: rgba(231,76,60,0.08); border-left: 2px solid #e74c3c; padding-left: 2px; border-radius: 3px; }
-  .h-sub-label.sub-priority-med { background: rgba(241,196,15,0.08); border-left: 2px solid #f1c40f; padding-left: 2px; border-radius: 3px; }
-  .h-sub-label.sub-priority-low { background: rgba(39,174,96,0.08); border-left: 2px solid #27ae60; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-high { background: rgba(231,76,60,0.12); border-left: 3px solid #e74c3c; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-med  { background: rgba(241,196,15,0.12); border-left: 3px solid #f1c40f; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-low  { background: rgba(52,152,219,0.12); border-left: 3px solid #3498db; padding-left: 2px; border-radius: 3px; }
+  .h-sub-label.sub-priority-done { background: rgba(39,174,96,0.12); border-left: 3px solid #27ae60; padding-left: 2px; border-radius: 3px; }
 
   /* Milestone scrollable */
   .ms-scroll { overflow-x: visible; }
@@ -138,7 +140,7 @@
   .age-badge.yellow { background: #f1c40f22; color: #b7950b; }
   .age-badge.red { background: #e74c3c22; color: #e74c3c; }
   .priority-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
-  .p-high{background:#e74c3c}.p-med{background:#f1c40f}.p-low{background:#27ae60}.p-none{background:transparent}
+  .p-high{background:#e74c3c}.p-med{background:#f1c40f}.p-low{background:#3498db}.p-none{background:transparent}.p-completed{background:#27ae60}
 
   .add-btn { font-size: 10px; color: var(--text3); cursor: pointer; padding: 2px 4px; border-radius: 3px; margin: 1px 0; }
   .add-btn:hover { color: var(--text); background: var(--bg3); }
@@ -562,6 +564,13 @@ function ageDays(ts){return Math.floor((Date.now()-(ts||Date.now()))/864e5)}
 function ageClass(ts){const d=ageDays(ts);if(d>=14)return'red';if(d>=7)return'yellow';return''}
 function ageBadge(ts){const d=ageDays(ts);if(d>=14)return`<span class="age-badge red">${d}d</span>`;if(d>=7)return`<span class="age-badge yellow">${d}d</span>`;return''}
 function priorityDot(p){return`<div class="priority-dot p-${p||'none'}"></div>`}
+function priorityBg(p){
+  if(p==='high')      return 'background:rgba(231,76,60,0.15);border-left:3px solid #e74c3c;';
+  if(p==='med')       return 'background:rgba(241,196,15,0.15);border-left:3px solid #f1c40f;';
+  if(p==='low')       return 'background:rgba(52,152,219,0.15);border-left:3px solid #3498db;';
+  if(p==='completed') return 'background:rgba(39,174,96,0.15);border-left:3px solid #27ae60;';
+  return '';
+}
 function isURL(s){return typeof s==='string'&&(s.startsWith('http://')||s.startsWith('https://'))}
 
 function startFreezeClass(diff){
@@ -655,8 +664,7 @@ function renderBox(boxId){
             const subHasRed=subTasks.some(t=>t.priority==='high'||ageDays(t.created||Date.now())>=14||(t.subtasks||[]).some(st=>ageDays(st.created||Date.now())>=14));
             const subHasYellow=!subHasRed&&(subTasks.some(t=>t.priority==='med'||ageDays(t.created||Date.now())>=7||(t.subtasks||[]).some(st=>ageDays(st.created||Date.now())>=7)));
             const subPriorityClass=subHasRed?'sub-priority-high':subHasYellow?'sub-priority-med':'';
-            // Manual priority override
-            const subManualClass=sub.priority==='high'?'sub-priority-high':sub.priority==='med'?'sub-priority-med':sub.priority==='low'?'sub-priority-low':'';
+            const subManualClass=sub.priority==='high'?'sub-priority-high':sub.priority==='med'?'sub-priority-med':sub.priority==='low'?'sub-priority-low':sub.priority==='completed'?'sub-priority-done':'';
             const finalSubClass=subManualClass||subPriorityClass;
             const isSubChecked = sub.checked||false;
             html+=`<div class="h-sub${isSubChecked?' sub-checked':''}">
@@ -677,10 +685,13 @@ function renderBox(boxId){
             const ac=ageClass(task.created||Date.now());
             const isHighPriority=task.priority==='high';
             const flagHtml=isHighPriority?'<span style="color:#e74c3c;font-size:12px;flex-shrink:0;margin-top:1px" title="High priority">🚩</span>':'';
-            const taskBg=isHighPriority?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':'';
+            const taskBg=priorityBg(task.priority);
             const isChecked=task.checked||false;
+            const taskOpen=task.open!==false;
+            const hasChildren=(task.subtasks||[]).length>0;
             html+=`<div class="h-task${ac?' age-'+ac:''}${task.star?' starred':''}${isChecked?' checked':''}" style="${taskBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}">
               <span class="drag-handle" draggable="false">⠿</span>
+              ${hasChildren?`<span class="task-collapse-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" style="font-size:9px;color:var(--text3);cursor:pointer;flex-shrink:0;margin-top:2px;transform:${taskOpen?'rotate(90deg)':'rotate(0deg)'};display:inline-block;transition:transform .15s">▶</span>`:'<span style="width:12px;flex-shrink:0"></span>'}
               <input type="checkbox" class="task-cb" ${isChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}"/>
               ${priorityDot(task.priority)}
               ${flagHtml}
@@ -695,17 +706,20 @@ function renderBox(boxId){
                 <span class="task-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" title="Delete">✕</span>
               </div>
             </div>`;
-            // Render subtasks/notes — indented under task
+            // Render subtasks/notes — collapsible, indented under task
             if((task.subtasks||[]).length>0){
-              html+=`<div style="margin-left:28px;border-left:2px solid var(--border);padding-left:8px;margin-top:1px;margin-bottom:2px">`;
+              html+=`<div class="task-subtask-body" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" style="margin-left:28px;border-left:2px solid var(--border);padding-left:8px;margin-top:1px;margin-bottom:2px;${taskOpen?'':'display:none'}">`;
             }
             (task.subtasks||[]).forEach((st,sti)=>{
               const stAc=ageClass(st.created||Date.now());
               const stChecked=st.checked||false;
               const stPriority=st.priority||'none';
-              const stBg=stPriority==='high'?'background:rgba(231,76,60,0.08);border-left:2px solid #e74c3c;padding-left:4px;':stPriority==='med'?'background:rgba(241,196,15,0.06);border-left:2px solid #f1c40f;padding-left:4px;':stPriority==='low'?'background:rgba(39,174,96,0.06);border-left:2px solid #27ae60;padding-left:4px;':'';
+              const stBg=priorityBg(stPriority);
+              const stOpen=st.open!==false;
+              const stHasChildren=(st.children||[]).length>0;
               html+=`<div class="h-subtask${stAc?' age-'+stAc:''}${stChecked?' checked':''}" style="${stBg}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">
                 <span class="subtask-drag-handle" style="font-size:11px;color:var(--text3);cursor:grab;opacity:0;flex-shrink:0;user-select:none;padding:0 2px;margin-top:1px" title="Drag to reorder">⠿</span>
+                ${stHasChildren?`<span class="st-collapse-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" style="font-size:9px;color:var(--text3);cursor:pointer;flex-shrink:0;margin-top:2px;transform:${stOpen?'rotate(90deg)':'rotate(0deg)'};display:inline-block">▶</span>`:'<span style="width:10px;flex-shrink:0"></span>'}
                 <input type="checkbox" class="subtask-cb" ${stChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}"/>
                 ${priorityDot(stPriority)}
                 <div class="subtask-text" contenteditable="true" spellcheck="true" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">${st.text||''}</div>
@@ -714,6 +728,25 @@ function renderBox(boxId){
                   ${stChecked?`<span class="send-subtask-complete" style="font-size:9px;color:#27ae60;cursor:pointer;padding:1px 4px;border:1px solid #27ae6044;border-radius:3px" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">→ done</span>`:''}
                   <span class="subtask-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}">✕</span>
                 </div>
+              </div>`;
+              // Children of this note
+              if(stHasChildren){
+                html+=`<div class="st-children-body" style="margin-left:24px;border-left:2px dashed var(--border2);padding-left:8px;margin-top:2px;margin-bottom:2px;${stOpen?'':'display:none'}">`;
+                (st.children||[]).forEach((ch,chi)=>{
+                  const chBg=priorityBg(ch.priority||'none');
+                  const chChecked=ch.checked||false;
+                  html+=`<div class="h-child${chChecked?' child-checked':''}" style="${chBg}padding:2px 3px;border-radius:3px;display:flex;align-items:flex-start;gap:4px" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" data-chi="${chi}">
+                    <span style="width:10px;flex-shrink:0"></span>
+                    <input type="checkbox" class="child-cb" ${chChecked?'checked':''} data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" data-chi="${chi}" style="width:11px;height:11px;flex-shrink:0;accent-color:#27ae60;cursor:pointer;margin-top:2px"/>
+                    ${priorityDot(ch.priority||'none')}
+                    <div class="child-text" contenteditable="true" spellcheck="true" style="flex:1;outline:none;font-size:10px;color:var(--text2);line-height:1.4;${chChecked?'text-decoration:line-through;opacity:0.45;':''}" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" data-chi="${chi}">${ch.text||''}</div>
+                    <span class="child-del" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" data-chi="${chi}" style="font-size:9px;color:var(--text3);cursor:pointer;display:none;margin-top:2px">✕</span>
+                  </div>`;
+                });
+                html+=`</div>`;
+              }
+              html+=`<div style="padding-left:34px;margin-top:1px">
+                <span class="add-child-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" style="font-size:9px;color:var(--text3);cursor:pointer">＋ child</span>
               </div>`;
             });
             if((task.subtasks||[]).length>0){
@@ -879,6 +912,90 @@ function bindBox(boxId){
     });
   });
 
+  // Task collapse toggle
+  el.querySelectorAll('.task-collapse-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti}=btn.dataset;
+      const task=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)];
+      task.open=task.open===false?true:false;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Sub-note collapse toggle
+  el.querySelectorAll('.st-collapse-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti}=btn.dataset;
+      const st=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)];
+      st.open=st.open===false?true:false;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Add child to note
+  el.querySelectorAll('.add-child-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti}=btn.dataset;
+      const st=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)];
+      if(!st.children)st.children=[];
+      st.children.push({id:uid(),text:'New child',priority:'none',created:Date.now()});
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Child text edit
+  el.querySelectorAll('.child-text').forEach(el2=>{
+    el2.addEventListener('blur',()=>{
+      const d=loadD();const{pi,si,ti,sti,chi}=el2.dataset;
+      const st=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)];
+      if(st.children&&st.children[parseInt(chi)])st.children[parseInt(chi)].text=el2.innerHTML.trim();
+      saveD(d);
+    });
+    el2.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();el2.blur();}});
+  });
+
+  // Child delete
+  el.querySelectorAll('.child-del').forEach(btn=>{
+    btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti,chi}=btn.dataset;
+      d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)].children.splice(parseInt(chi),1);
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  // Child hover show delete
+  // Child checkbox
+  el.querySelectorAll('.child-cb').forEach(cb=>{
+    cb.addEventListener('change',e=>{
+      e.stopPropagation();
+      const d=loadD();const{pi,si,ti,sti,chi}=cb.dataset;
+      const ch=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)].children[parseInt(chi)];
+      ch.checked=cb.checked;
+      saveD(d);renderBox(boxId);
+    });
+  });
+
+  el.querySelectorAll('.h-child').forEach(row=>{
+    row.addEventListener('mouseover',()=>{ const d=row.querySelector('.child-del'); if(d)d.style.display='inline'; });
+    row.addEventListener('mouseout',()=>{ const d=row.querySelector('.child-del'); if(d)d.style.display='none'; });
+    // Right-click for priority
+    row.addEventListener('contextmenu',e=>{
+      e.preventDefault();
+      const{pi,si,ti,sti,chi}=row.dataset;
+      showCtx(e.clientX,e.clientY,[
+        {label:'🔴 High priority',action:()=>setChildPriority(boxId,pi,si,ti,sti,chi,'high')},
+        {label:'🟡 Medium priority',action:()=>setChildPriority(boxId,pi,si,ti,sti,chi,'med')},
+        {label:'🔵 Low priority',action:()=>setChildPriority(boxId,pi,si,ti,sti,chi,'low')},
+        {label:'🟢 Completed',action:()=>setChildPriority(boxId,pi,si,ti,sti,chi,'completed')},
+        {label:'⬜ No priority',action:()=>setChildPriority(boxId,pi,si,ti,sti,chi,'none')},
+      ]);
+    });
+  });
+
   // Add subtask
   el.querySelectorAll('.add-subtask-btn').forEach(btn=>{
     btn.addEventListener('click',e=>{
@@ -960,7 +1077,8 @@ function bindBox(boxId){
       showCtx(e.clientX,e.clientY,[
         {label:'🔴 High priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'high')},
         {label:'🟡 Medium priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'med')},
-        {label:'🟢 Low priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'low')},
+        {label:'🔵 Low priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'low')},
+        {label:'🟢 Completed',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'completed')},
         {label:'⬜ No priority',action:()=>setSubtaskPriority(boxId,pi,si,ti,sti,'none')},
       ]);
     });
@@ -1208,7 +1326,8 @@ function bindBox(boxId){
       showCtx(e.clientX,e.clientY,[
         {label:'🔴 High priority',action:()=>setSubPriority(boxId,pi,si,'high')},
         {label:'🟡 Medium priority',action:()=>setSubPriority(boxId,pi,si,'med')},
-        {label:'🟢 Low priority',action:()=>setSubPriority(boxId,pi,si,'low')},
+        {label:'🔵 Low priority',action:()=>setSubPriority(boxId,pi,si,'low')},
+        {label:'🟢 Completed',action:()=>setSubPriority(boxId,pi,si,'completed')},
         {label:'⬜ No priority',action:()=>setSubPriority(boxId,pi,si,'none')},
       ]);
     });
@@ -1221,7 +1340,8 @@ function bindBox(boxId){
       showCtx(e.clientX,e.clientY,[
         {label:'🔴 High priority',action:()=>setPriority(boxId,pi,si,ti,'high')},
         {label:'🟡 Medium priority',action:()=>setPriority(boxId,pi,si,ti,'med')},
-        {label:'🟢 Low priority',action:()=>setPriority(boxId,pi,si,ti,'low')},
+        {label:'🔵 Low priority',action:()=>setPriority(boxId,pi,si,ti,'low')},
+        {label:'🟢 Completed',action:()=>setPriority(boxId,pi,si,ti,'completed')},
         {label:'⬜ No priority',action:()=>setPriority(boxId,pi,si,ti,'none')},
         {label:'🔗 Add link',action:()=>showLinkDialog(boxId,pi,si,ti)},
         ...(isTaskChecked?[{label:'✅ Send to completed log',action:()=>{
@@ -1280,6 +1400,12 @@ function bindBox(boxId){
 
 function setPriority(boxId,pi,si,ti,p){
   const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].priority=p;saveD(d);renderBox(boxId);
+}
+function setChildPriority(boxId,pi,si,ti,sti,chi,p){
+  const d=loadD();
+  const children=d[boxId].parents[parseInt(pi)].subs[parseInt(si)].tasks[parseInt(ti)].subtasks[parseInt(sti)].children;
+  if(children&&children[parseInt(chi)])children[parseInt(chi)].priority=p;
+  saveD(d);renderBox(boxId);
 }
 function setSubPriority(boxId,pi,si,p){
   const d=loadD();d[boxId].parents[parseInt(pi)].subs[parseInt(si)].priority=p;saveD(d);renderBox(boxId);
