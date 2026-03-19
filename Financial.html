@@ -2584,12 +2584,21 @@ function staffTrend(assetId){
   const projectedTotal    = actualCumulative + (avgActualPerMonth * remainMonths.length);
   const projectedOverrun  = projectedTotal - totalForecast;
 
+  // How far through the project are we? Early stage = less reliable variance signal
+  const pctComplete = postedMonths / Math.max(allMonths.length, 1);
+  // Threshold scales: early in project require bigger variance to flag red
+  // < 20% through: need 30%+ variance; > 60% through: 15%+ flags red
+  const redThreshold    = pctComplete < 0.20 ? 0.30 : pctComplete < 0.40 ? 0.20 : 0.15;
+  const yellowThreshold = pctComplete < 0.20 ? 0.15 : pctComplete < 0.40 ? 0.10 : 0.05;
+
+  // Primary signal: projected total vs total forecast (more reliable than to-date %)
+  // Secondary signal: to-date variance % for confirmation
   let status, label, color;
-  if(varPct > 0.15 || projectedOverrun > totalForecast * 0.15){
+  if(projectedOverrun > totalForecast * redThreshold || (varPct > redThreshold && pctComplete > 0.25)){
     status='red';    label='Over Budget';   color='var(--red)';
-  } else if(varPct > 0.05 || projectedOverrun > totalForecast * 0.05){
+  } else if(projectedOverrun > totalForecast * yellowThreshold || (varPct > yellowThreshold && pctComplete > 0.15)){
     status='yellow'; label='Trending High'; color='var(--yellow)';
-  } else if(varPct < -0.05){
+  } else if(varPct < -yellowThreshold){
     status='blue';   label='Trending Low';  color='var(--blue)';
   } else {
     status='green';  label='On Track';      color='var(--green)';
@@ -2682,8 +2691,9 @@ function renderForecastTab(){
           ${trend&&trend.varPct!==undefined ? (trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%' : '—'}
         </div>
         <div style="font-family:'DM Mono',monospace;font-size:11px;color:${trend?trend.color:'var(--text3)'};margin-top:2px">
-          ${trend&&trend.variance!==undefined ? (trend.variance>=0?'+':'')+'$'+Math.round(Math.abs(trend.variance)).toLocaleString() : ''}
+          ${trend&&trend.variance!==undefined ? (trend.variance>=0?'+':'-')+'$'+Math.round(Math.abs(trend.variance)).toLocaleString()+' to date' : ''}
         </div>
+        ${trend&&trend.projectedOverrun!==undefined&&Math.abs(trend.projectedOverrun)>100 ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:${trend.color};margin-top:1px">${trend.projectedOverrun>=0?'+':'-'}$${Math.round(Math.abs(trend.projectedOverrun)).toLocaleString()} projected</div>` : ''}
         <div data-summary-trend="${proj.id}" style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
       </div>
     </div>`;
@@ -2920,7 +2930,7 @@ function renderBurnSummary(){
       if(!fc) return { proj, fc:null, trend, totalForecast:0, totalActual:0 };
 
       const months       = monthRange(fc.start, fc.end);
-      const totalForecast = fc.monthly * months.length;
+      const totalForecast = fcTotal(fc);  // use fcTotal which handles both months obj and legacy monthly
       const actuals      = (_finCache.staffingActuals||{})[proj.id]||{};
       const totalActual  = Object.values(actuals).reduce((s,v)=>s+(v.cost||0),0);
       siteForecast += totalForecast;
