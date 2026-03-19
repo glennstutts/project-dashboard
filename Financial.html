@@ -2574,33 +2574,39 @@ function staffTrend(assetId){
 
   if(postedMonths === 0) return { status: 'none', label: 'No actuals yet', color: 'var(--text3)' };
 
+  // variance: negative = under budget (good), positive = over budget (bad)
   const variance = actualCumulative - forecastCumulative;
   const varPct   = forecastCumulative > 0 ? variance / forecastCumulative : 0;
 
-  // Project remaining: use avg actual burn rate over posted months
-  const avgActualPerMonth = actualCumulative / postedMonths;
-  const remainMonths      = allMonths.filter(m => actuals[m] === undefined);
-  const remainForecast    = remainMonths.reduce((s,m) => s + fcForMonth(fc,m), 0);
-  const projectedTotal    = actualCumulative + (avgActualPerMonth * remainMonths.length);
-  const projectedOverrun  = projectedTotal - totalForecast;
+  // Projection: actual so far + remaining forecast (don't extrapolate burn rate —
+  // staffing forecasts vary by phase, flat extrapolation misleads)
+  const remainMonths   = allMonths.filter(m => actuals[m] === undefined);
+  const remainForecast = remainMonths.reduce((s,m) => s + fcForMonth(fc,m), 0);
+  // Projected total = actuals to date + remaining forecast + to-date variance applied to remainder
+  // This asks: if we keep running at the same % over/under, what's the final total?
+  const remainVarFactor = forecastCumulative > 0 ? actualCumulative / forecastCumulative : 1;
+  const projectedTotal   = actualCumulative + (remainForecast * remainVarFactor);
+  const projectedOverrun = projectedTotal - totalForecast; // negative = under budget
 
-  // How far through the project are we? Early stage = less reliable variance signal
   const pctComplete = postedMonths / Math.max(allMonths.length, 1);
-  // Threshold scales: early in project require bigger variance to flag red
-  // < 20% through: need 30%+ variance; > 60% through: 15%+ flags red
-  const redThreshold    = pctComplete < 0.20 ? 0.30 : pctComplete < 0.40 ? 0.20 : 0.15;
-  const yellowThreshold = pctComplete < 0.20 ? 0.15 : pctComplete < 0.40 ? 0.10 : 0.05;
 
-  // Primary signal: projected total vs total forecast (more reliable than to-date %)
-  // Secondary signal: to-date variance % for confirmation
+  // Status: based on to-date variance % (negative = under = good)
+  // Thresholds scale by project completion to avoid early false alarms
+  const redThreshold    = pctComplete < 0.20 ? 0.30 : pctComplete < 0.40 ? 0.20 : 0.15;
+  const yellowThreshold = pctComplete < 0.20 ? 0.20 : pctComplete < 0.40 ? 0.12 : 0.07;
+
   let status, label, color;
-  if(projectedOverrun > totalForecast * redThreshold || (varPct > redThreshold && pctComplete > 0.25)){
+  if(varPct > redThreshold){
+    // Spending significantly more than forecast
     status='red';    label='Over Budget';   color='var(--red)';
-  } else if(projectedOverrun > totalForecast * yellowThreshold || (varPct > yellowThreshold && pctComplete > 0.15)){
+  } else if(varPct > yellowThreshold){
+    // Spending somewhat more than forecast
     status='yellow'; label='Trending High'; color='var(--yellow)';
   } else if(varPct < -yellowThreshold){
+    // Spending less than forecast — good
     status='blue';   label='Trending Low';  color='var(--blue)';
   } else {
+    // Within normal band
     status='green';  label='On Track';      color='var(--green)';
   }
 
@@ -2608,7 +2614,7 @@ function staffTrend(assetId){
     status, label, color, varPct,
     forecastCumulative, actualCumulative, variance,
     projectedTotal, totalForecast, projectedOverrun,
-    postedMonths, avgActualPerMonth, remainForecast
+    postedMonths, remainForecast
   };
 }
 
@@ -2691,9 +2697,9 @@ function renderForecastTab(){
           ${trend&&trend.varPct!==undefined ? (trend.varPct>=0?'+':'')+Math.round(trend.varPct*100)+'%' : '—'}
         </div>
         <div style="font-family:'DM Mono',monospace;font-size:11px;color:${trend?trend.color:'var(--text3)'};margin-top:2px">
-          ${trend&&trend.variance!==undefined ? (trend.variance>=0?'+':'-')+'$'+Math.round(Math.abs(trend.variance)).toLocaleString()+' to date' : ''}
+          ${trend&&trend.variance!==undefined ? (trend.variance>=0?'+':'')+'$'+Math.round(trend.variance).toLocaleString()+' to date' : ''}
         </div>
-        ${trend&&trend.projectedOverrun!==undefined&&Math.abs(trend.projectedOverrun)>100 ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:${trend.color};margin-top:1px">${trend.projectedOverrun>=0?'+':'-'}$${Math.round(Math.abs(trend.projectedOverrun)).toLocaleString()} projected</div>` : ''}
+        ${trend&&trend.projectedOverrun!==undefined&&Math.abs(trend.projectedOverrun)>500 ? `<div style="font-family:'DM Mono',monospace;font-size:9px;color:${trend.color};margin-top:1px">${trend.projectedOverrun>=0?'+':''}$${Math.round(trend.projectedOverrun).toLocaleString()} projected</div>` : ''}
         <div data-summary-trend="${proj.id}" style="font-size:9px;color:${trend?trend.color:'var(--text3)'}">${trend?trend.label:'No actuals'}</div>
       </div>
     </div>`;
