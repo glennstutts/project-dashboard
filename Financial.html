@@ -2553,18 +2553,21 @@ function fcTotal(fc){
 function staffTrend(assetId){
   const fc = (_finCache.staffingForecasts||{})[assetId];
   if(!fc || !fc.start || !fc.end) return null;
-  // Check if forecast has any values
   const total = fcTotal(fc);
   if(total === 0) return null;
 
-  const actuals = (_finCache.staffingActuals||{})[assetId] || {};
-  const today   = todayMonth();
-  const postedRange = monthRange(fc.start, today < fc.end ? today : fc.end);
+  const actuals     = (_finCache.staffingActuals||{})[assetId] || {};
+  const allMonths   = monthRange(fc.start, fc.end);
+  const totalForecast = fcTotal(fc);
 
+  // Count all months that have actuals entered (regardless of past/future)
   let forecastCumulative = 0, actualCumulative = 0, postedMonths = 0;
-  postedRange.forEach(m => {
-    forecastCumulative += fcForMonth(fc, m);
-    if(actuals[m] !== undefined){ actualCumulative += (actuals[m].cost||0); postedMonths++; }
+  allMonths.forEach(m => {
+    if(actuals[m] !== undefined){
+      forecastCumulative += fcForMonth(fc, m);
+      actualCumulative   += (actuals[m].cost||0);
+      postedMonths++;
+    }
   });
 
   if(postedMonths === 0) return { status: 'none', label: 'No actuals yet', color: 'var(--text3)' };
@@ -2572,23 +2575,22 @@ function staffTrend(assetId){
   const variance = actualCumulative - forecastCumulative;
   const varPct   = forecastCumulative > 0 ? variance / forecastCumulative : 0;
 
-  // Project remaining using avg actual vs remaining forecast
-  const avgActualPerMonth = postedMonths > 0 ? actualCumulative / postedMonths : 0;
-  const remainMonths = monthRange(today, fc.end).filter(m => !actuals[m]);
-  const remainForecast = remainMonths.reduce((s,m) => s + fcForMonth(fc,m), 0);
-  const projectedTotal = actualCumulative + (avgActualPerMonth * remainMonths.length);
-  const totalForecast  = fcTotal(fc);
-  const projectedOverrun = projectedTotal - totalForecast;
+  // Project remaining: use avg actual burn rate over posted months
+  const avgActualPerMonth = actualCumulative / postedMonths;
+  const remainMonths      = allMonths.filter(m => actuals[m] === undefined);
+  const remainForecast    = remainMonths.reduce((s,m) => s + fcForMonth(fc,m), 0);
+  const projectedTotal    = actualCumulative + (avgActualPerMonth * remainMonths.length);
+  const projectedOverrun  = projectedTotal - totalForecast;
 
   let status, label, color;
   if(varPct > 0.15 || projectedOverrun > totalForecast * 0.15){
-    status='red';    label='Over Budget';    color='var(--red)';
+    status='red';    label='Over Budget';   color='var(--red)';
   } else if(varPct > 0.05 || projectedOverrun > totalForecast * 0.05){
-    status='yellow'; label='Trending High';  color='var(--yellow)';
+    status='yellow'; label='Trending High'; color='var(--yellow)';
   } else if(varPct < -0.05){
-    status='blue';   label='Trending Low';   color='var(--blue)';
+    status='blue';   label='Trending Low';  color='var(--blue)';
   } else {
-    status='green';  label='On Track';       color='var(--green)';
+    status='green';  label='On Track';      color='var(--green)';
   }
 
   return {
