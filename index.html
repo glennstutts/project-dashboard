@@ -731,7 +731,7 @@ function renderBox(boxId){
               </div>`;
               // Children of this note
               if(stHasChildren){
-                html+=`<div class="st-children-body" style="margin-left:24px;border-left:2px dashed var(--border2);padding-left:8px;margin-top:2px;margin-bottom:2px;${stOpen?'':'display:none'}">`;
+                html+=`<div class="st-children-body" style="margin-left:40px;border-left:2px dashed var(--border2);padding-left:8px;margin-top:2px;margin-bottom:2px;${stOpen?'':'display:none'}">`;
                 (st.children||[]).forEach((ch,chi)=>{
                   const chBg=priorityBg(ch.priority||'none');
                   const chChecked=ch.checked||false;
@@ -745,7 +745,7 @@ function renderBox(boxId){
                 });
                 html+=`</div>`;
               }
-              html+=`<div style="padding-left:34px;margin-top:1px">
+              html+=`<div style="padding-left:50px;margin-top:1px">
                 <span class="add-child-btn" data-box="${boxId}" data-pi="${pi}" data-si="${si}" data-ti="${ti}" data-sti="${sti}" style="font-size:9px;color:var(--text3);cursor:pointer">＋ child</span>
               </div>`;
             });
